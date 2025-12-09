@@ -5,6 +5,10 @@ import { userSchema, validateRequest } from '@/lib/validations'
 import { rateLimit, getClientIp, rateLimitConfigs } from '@/lib/rate-limit'
 import { sanitizeEmail, securityHeaders } from '@/lib/security'
 
+// Ensure this route works on Vercel
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: NextRequest) {
     try {
         // Rate limiting
