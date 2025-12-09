@@ -2,25 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Brain, Zap, Settings, BarChart3, RefreshCw, Play, Save, TrendingUp, Globe, MessageSquare, Eye, Heart, Star, Target, Lightbulb, AlertTriangle } from 'lucide-react'
+import { Search, Moon, Sun, Brain, Video, Mic, FileText, ArrowLeft, Sparkles, Heart, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Slider } from '@/components/ui/slider'
-import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { aiGenerator, AIArticle, AIConfig } from '@/lib/ai-generator'
-
-interface Settings {
-  theme: 'light' | 'dark'
-  fontSize: 'small' | 'medium' | 'large'
-  dailyCount: number
-  lastPublished: string
-  savedArticles: string[]
-  readingHistory: string[]
-}
+import { Content, MediaType, getAllContent, CATEGORIES, formatDate, Settings } from '@/lib/content-models'
+import { motion } from 'framer-motion'
+import { AIContentGenerator } from '@/components/ai/AIContentGenerator'
 
 const getSettings = (): Settings => {
   if (typeof window === 'undefined') return {
@@ -31,7 +21,7 @@ const getSettings = (): Settings => {
     savedArticles: [],
     readingHistory: []
   }
-  
+
   const settings = localStorage.getItem('meridianSettings')
   return settings ? JSON.parse(settings) : {
     theme: 'light',
@@ -49,90 +39,21 @@ const saveSettings = (settings: Settings) => {
   }
 }
 
-const getAIConfig = (): AIConfig => {
-  if (typeof window === 'undefined') return {
-    dailyGenerationCount: 0,
-    lastGeneration: new Date().toISOString(),
-    nextGeneration: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-    topicsCovered: [],
-    generationHistory: [],
-    userPreferences: {
-      preferredCategories: ['all'],
-      aiContentEnabled: true,
-      aiDensity: 'balanced'
-    }
-  }
-  
-  const config = localStorage.getItem('meridianAIConfig')
-  return config ? JSON.parse(config) : {
-    dailyGenerationCount: 0,
-    lastGeneration: new Date().toISOString(),
-    nextGeneration: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-    topicsCovered: [],
-    generationHistory: [],
-    userPreferences: {
-      preferredCategories: ['all'],
-      aiContentEnabled: true,
-      aiDensity: 'balanced'
-    }
-  }
-}
-
-const saveAIConfig = (config: AIConfig) => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('meridianAIConfig', JSON.stringify(config))
-  }
-}
-
-const getAIArticles = (): AIArticle[] => {
-  if (typeof window === 'undefined') return []
-  
-  const articles = localStorage.getItem('meridianAIArticles')
-  return articles ? JSON.parse(articles) : []
-}
-
-const saveAIArticles = (articles: AIArticle[]) => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('meridianAIArticles', JSON.stringify(articles))
-  }
-}
-
 export default function AILabPage() {
   const router = useRouter()
-  const [settings, setSettings] = useState<Settings>({
-    theme: 'light',
-    fontSize: 'medium',
-    dailyCount: 0,
-    lastPublished: '',
-    savedArticles: [],
-    readingHistory: []
-  })
-  const [aiConfig, setAIConfig] = useState<AIConfig>({
-    dailyGenerationCount: 0,
-    lastGeneration: new Date().toISOString(),
-    nextGeneration: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-    topicsCovered: [],
-    generationHistory: [],
-    userPreferences: {
-      preferredCategories: ['all'],
-      aiContentEnabled: true,
-      aiDensity: 'balanced'
-    }
-  })
-  const [aiArticles, setAIArticles] = useState<AIArticle[]>([])
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState('random')
-  const [generationCount, setGenerationCount] = useState(5)
-  const [activeTab, setActiveTab] = useState('generate')
+  const [content, setContent] = useState<Content[]>([])
+  const [settings, setSettings] = useState<Settings>(getSettings())
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [selectedMediaType, setSelectedMediaType] = useState<MediaType | 'all'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const loadedSettings = getSettings()
-    const loadedConfig = getAIConfig()
-    const loadedArticles = getAIArticles()
-    
     setSettings(loadedSettings)
-    setAIConfig(loadedConfig)
-    setAIArticles(loadedArticles)
+    // Filter only AI-generated content
+    const allContent = getAllContent()
+    const aiContent = allContent.filter(item => item.isAI === true)
+    setContent(aiContent)
   }, [])
 
   useEffect(() => {
@@ -144,488 +65,258 @@ export default function AILabPage() {
     }
   }, [settings])
 
-  useEffect(() => {
-    saveAIConfig(aiConfig)
-  }, [aiConfig])
+  const filteredContent = content.filter(item => {
+    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory
+    const matchesMediaType = selectedMediaType === 'all' || item.mediaType === selectedMediaType
+    const matchesSearch = searchQuery === '' ||
+      item.headline.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.content.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesCategory && matchesMediaType && matchesSearch
+  })
 
-  const handleGenerateArticles = async () => {
-    setIsGenerating(true)
-    
-    try {
-      const newArticles = aiGenerator.generateMultipleArticles(generationCount)
-      const updatedArticles = [...newArticles, ...aiArticles]
-      
-      setAIArticles(updatedArticles)
-      saveAIArticles(updatedArticles)
-      
-      const updatedConfig = {
-        ...aiConfig,
-        dailyGenerationCount: aiConfig.dailyGenerationCount + generationCount,
-        lastGeneration: new Date().toISOString(),
-        nextGeneration: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-        generationHistory: [
-          ...aiConfig.generationHistory,
-          {
-            timestamp: new Date().toISOString(),
-            category: selectedCategory,
-            count: generationCount
-          }
-        ]
-      }
-      
-      setAIConfig(updatedConfig)
-      saveAIConfig(updatedConfig)
-      
-    } catch (error) {
-      console.error('Failed to generate articles:', error)
-    } finally {
-      setIsGenerating(false)
+  const getContentLink = (item: Content) => {
+    if (item.mediaType === 'video') return `/video/${item.id}`
+    if (item.mediaType === 'podcast') return `/podcast/${item.id}`
+    return `/article/${item.id}`
+  }
+
+  const getContentThumbnail = (item: Content) => {
+    if (item.mediaType === 'video') return (item as any).thumbnailUrl
+    if (item.mediaType === 'podcast') return (item as any).coverImageUrl
+    return (item as any).image
+  }
+
+  const getMediaIcon = (mediaType: MediaType) => {
+    switch (mediaType) {
+      case 'video': return <Video className="w-3 h-3" />
+      case 'podcast': return <Mic className="w-3 h-3" />
+      default: return <FileText className="w-3 h-3" />
     }
   }
-
-  const handleGenerateBreakingNews = async () => {
-    setIsGenerating(true)
-    
-    try {
-      const breakingArticle = aiGenerator.generateBreakingNews()
-      const updatedArticles = [breakingArticle, ...aiArticles]
-      
-      setAIArticles(updatedArticles)
-      saveAIArticles(updatedArticles)
-      
-    } catch (error) {
-      console.error('Failed to generate breaking news:', error)
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  const getTimeUntilNextGeneration = () => {
-    const now = new Date().getTime()
-    const nextTime = new Date(aiConfig.nextGeneration).getTime()
-    const diff = nextTime - now
-    
-    if (diff <= 0) return 'Available now'
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-    
-    return `${hours}h ${minutes}m`
-  }
-
-  const getCategoryDistribution = () => {
-    const distribution: Record<string, number> = {}
-    
-    aiArticles.forEach(article => {
-      distribution[article.category] = (distribution[article.category] || 0) + 1
-    })
-    
-    return distribution
-  }
-
-  const categoryDistribution = getCategoryDistribution()
-  const timeUntilNext = getTimeUntilNextGeneration()
 
   return (
-    <div className={`min-h-screen ${settings.theme === 'dark' ? 'dark' : ''}`}>
-      <div className="bg-background text-foreground">
-        {/* Header */}
-        <header className="border-b bg-white dark:bg-gray-900">
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push('/')}
-                >
-                  ← Back to Home
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-6">
-                <h1 className="text-2xl font-serif font-bold text-black dark:text-white flex items-center">
-                  <Brain className="w-6 h-6 mr-2" />
-                  AI News Lab
-                </h1>
-              </div>
+    <div className={`min-h-screen ${settings.theme === 'dark' ? 'dark' : ''} bg-gradient-to-br from-purple-50 via-background to-blue-50 dark:from-purple-950/20 dark:via-background dark:to-blue-950/20`}>
 
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSettings({...settings, theme: settings.theme === 'light' ? 'dark' : 'light'})}
-                >
-                  {settings.theme === 'light' ? '🌙' : '☀️'}
-                </Button>
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/70 dark:bg-black/70 backdrop-blur-md border-b border-purple-200/40 dark:border-purple-800/40">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between h-20">
+            {/* Left */}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/')}
+                className="rounded-full"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+            </div>
+
+            {/* Center - Brand */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="absolute left-1/2 transform -translate-x-1/2 flex items-center space-x-2"
+            >
+              <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl">
+                <Brain className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-3xl font-serif font-black tracking-tight">
+                AI Lab
+              </h1>
+            </motion.div>
+
+            {/* Right - Actions */}
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}
+                className="rounded-full hover:bg-purple-100 dark:hover:bg-purple-900/20"
+              >
+                {settings.theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="border-b border-purple-200/40 dark:border-purple-800/40 bg-gradient-to-r from-purple-100/50 to-blue-100/50 dark:from-purple-900/20 dark:to-blue-900/20">
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-3xl mx-auto text-center space-y-4">
+            <div className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              <span className="text-sm font-medium text-purple-700 dark:text-purple-300">AI-Generated Content</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold">
+              Explore AI-Powered Stories
+            </h2>
+            <p className="text-lg text-muted-foreground">
+              Discover articles, videos, and podcasts created by advanced AI. Every piece is generated with creativity and precision.
+            </p>
+            <div className="flex items-center justify-center space-x-8 pt-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-600">{content.length}</div>
+                <div className="text-sm text-muted-foreground">AI Articles</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-blue-600">{content.filter(c => c.mediaType === 'video').length}</div>
+                <div className="text-sm text-muted-foreground">AI Videos</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-indigo-600">{content.filter(c => c.mediaType === 'podcast').length}</div>
+                <div className="text-sm text-muted-foreground">AI Podcasts</div>
               </div>
             </div>
           </div>
-        </header>
+        </div>
+      </section>
 
-        {/* Main Content */}
-        <main className="container mx-auto px-4 py-8">
-          {/* Status Dashboard */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center">
-                  <Zap className="w-5 h-5 mr-2 text-green-600" />
-                  AI System
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Status</span>
-                    <Badge className="bg-green-100 text-green-800">ACTIVE</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Articles Today</span>
-                    <span className="font-bold">{aiConfig.dailyGenerationCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Next Generation</span>
-                    <span className="font-bold text-blue-600">{timeUntilNext}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center">
-                  <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
-                  Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Quality Score</span>
-                    <span className="font-bold">8.7/10</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Engagement</span>
-                    <span className="font-bold">74%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Diversity</span>
-                    <span className="font-bold">92%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Search & Filters */}
+        <section className="mb-12">
+          <div className="glass-card p-2 rounded-2xl flex flex-col md:flex-row items-center gap-2 max-w-3xl mx-auto shadow-xl shadow-purple-500/10">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Input
+                placeholder="Search AI-generated content..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 border-none bg-transparent shadow-none focus-visible:ring-0 text-lg h-12"
+              />
+            </div>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center">
-                  <TrendingUp className="w-5 h-5 mr-2 text-purple-600" />
-                  Coverage
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Object.entries(categoryDistribution).map(([category, count]) => (
-                    <div key={category} className="flex items-center justify-between">
-                      <span className="text-sm capitalize">{category}</span>
-                      <div className="flex items-center space-x-2">
-                        <Progress value={(count / Math.max(...Object.values(categoryDistribution))) * 100} className="w-16" />
-                        <span className="text-sm font-bold">{count}</span>
-                      </div>
-                    </div>
+            <div className="flex items-center gap-2 w-full md:w-auto px-2">
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-full md:w-[140px] border-none bg-secondary/50 rounded-xl h-10">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Topics</SelectItem>
+                  {CATEGORIES.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
+                </SelectContent>
+              </Select>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center">
-                  <Settings className="w-5 h-5 mr-2 text-orange-600" />
-                  Quick Actions
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button 
-                  onClick={handleGenerateBreakingNews}
-                  disabled={isGenerating}
-                  className="w-full bg-red-600 hover:bg-red-700"
-                >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  Generate Breaking News
-                </Button>
-                <Button 
-                  onClick={() => router.push('/publish')}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  AI-Assisted Writing
-                </Button>
-              </CardContent>
-            </Card>
+              <Select value={selectedMediaType} onValueChange={(value: MediaType | 'all') => setSelectedMediaType(value)}>
+                <SelectTrigger className="w-full md:w-[140px] border-none bg-secondary/50 rounded-xl h-10">
+                  <SelectValue placeholder="Format" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Formats</SelectItem>
+                  <SelectItem value="article">Articles</SelectItem>
+                  <SelectItem value="video">Videos</SelectItem>
+                  <SelectItem value="podcast">Podcasts</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+        </section>
 
-          {/* Control Panel */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="generate">Generate</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            </TabsList>
+        {/* Content Grid */}
+        <section>
+          {filteredContent.length === 0 ? (
+            <div className="text-center py-20">
+              <Brain className="w-16 h-16 mx-auto text-purple-300 mb-4" />
+              <h3 className="text-2xl font-serif font-bold mb-2">No AI Content Yet</h3>
+              <p className="text-muted-foreground">AI-generated articles will appear here</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredContent.map((item) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Card
+                    className="glass-card overflow-hidden group border-none h-full flex flex-col cursor-pointer hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-300"
+                    onClick={() => router.push(getContentLink(item))}
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative aspect-video overflow-hidden">
+                      <div className="absolute top-3 left-3 z-10 flex gap-2">
+                        <Badge className="bg-purple-600/90 backdrop-blur-sm text-white border-none shadow-sm">
+                          <Brain className="w-3 h-3 mr-1" />
+                          AI
+                        </Badge>
+                        <Badge className="bg-black/70 backdrop-blur-sm text-white hover:bg-black/80 border-none">
+                          {getMediaIcon(item.mediaType)}
+                          <span className="ml-1">{item.mediaType}</span>
+                        </Badge>
+                      </div>
 
-            <TabsContent value="generate" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Brain className="w-6 h-6 mr-2" />
-                    AI Article Generator
-                  </CardTitle>
-                  <CardDescription>
-                    Generate high-quality, human-like articles instantly with our advanced AI system.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Category</label>
-                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="random">🎲 Random Mix</SelectItem>
-                          <SelectItem value="world">🌍 World News</SelectItem>
-                          <SelectItem value="politics">🏛️ Politics</SelectItem>
-                          <SelectItem value="technology">💻 Technology</SelectItem>
-                          <SelectItem value="business">📈 Business</SelectItem>
-                          <SelectItem value="sports">⚽ Sports</SelectItem>
-                          <SelectItem value="entertainment">🎬 Entertainment</SelectItem>
-                          <SelectItem value="health">🏥 Health</SelectItem>
-                          <SelectItem value="science">🔬 Science</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Number of Articles</label>
-                      <div className="flex items-center space-x-4">
-                        <Slider
-                          value={[generationCount]}
-                          onValueChange={(value) => setGenerationCount(value[0])}
-                          max={20}
-                          min={1}
-                          step={1}
-                          className="flex-1"
+                      {getContentThumbnail(item) ? (
+                        <img
+                          src={getContentThumbnail(item)}
+                          alt={item.headline}
+                          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
                         />
-                        <span className="font-bold text-lg w-12 text-center">{generationCount}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-4">
-                    <Button
-                      onClick={handleGenerateArticles}
-                      disabled={isGenerating}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700"
-                      size="lg"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
-                        </>
                       ) : (
-                        <>
-                          <Zap className="w-4 h-4 mr-2" />
-                          Generate {generationCount} Articles
-                        </>
+                        <div className="w-full h-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900 dark:to-blue-900" />
                       )}
-                    </Button>
-                    
-                    <Button
-                      onClick={() => router.push('/')}
-                      variant="outline"
-                    >
-                      View Generated Articles
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
-            <TabsContent value="settings" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>AI Configuration</CardTitle>
-                  <CardDescription>
-                    Customize how the AI generates content and what topics it covers.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-sm font-medium">Enable AI Content</label>
-                      <p className="text-sm text-muted-foreground">Allow AI to generate articles automatically</p>
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
-                    <Switch
-                      checked={aiConfig.userPreferences.aiContentEnabled}
-                      onCheckedChange={(checked) => setAIConfig({
-                        ...aiConfig,
-                        userPreferences: {
-                          ...aiConfig.userPreferences,
-                          aiContentEnabled: checked
-                        }
-                      })}
-                    />
-                  </div>
 
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">AI Generation Density</label>
-                    <Select 
-                      value={aiConfig.userPreferences.aiDensity} 
-                      onValueChange={(value: any) => setAIConfig({
-                        ...aiConfig,
-                        userPreferences: {
-                          ...aiConfig.userPreferences,
-                          aiDensity: value
-                        }
-                      })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="minimal">Minimal (2-3 articles/day)</SelectItem>
-                        <SelectItem value="balanced">Balanced (5-8 articles/day)</SelectItem>
-                        <SelectItem value="frequent">Frequent (10-15 articles/day)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="analytics" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Eye className="w-5 h-5 mr-2" />
-                      Engagement Metrics
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Total Views</span>
-                        <span className="font-bold">
-                          {aiArticles.reduce((sum, article) => sum + article.views, 0).toLocaleString()}
+                    <CardContent className="p-5 flex-1 flex flex-col">
+                      <div className="mb-2">
+                        <span className="text-xs font-semibold tracking-wider text-purple-600 dark:text-purple-400 uppercase">
+                          {CATEGORIES.find(c => c.id === item.category)?.name}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Total Likes</span>
-                        <span className="font-bold">
-                          {aiArticles.reduce((sum, article) => sum + article.likes, 0).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Avg. Confidence</span>
-                        <span className="font-bold">
-                          {(aiArticles.reduce((sum, article) => sum + article.confidence, 0) / Math.max(aiArticles.length, 1) * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Star className="w-5 h-5 mr-2" />
-                      Top Generated Articles
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {aiArticles.slice(0, 5).map((article, index) => (
-                        <div key={article.id} className="flex items-start space-x-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded">
-                          <span className="text-lg font-bold text-gray-400">#{index + 1}</span>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm line-clamp-1">{article.headline}</h4>
-                            <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
-                              <span>{article.category}</span>
-                              <span>•</span>
-                              <span>{article.views} views</span>
-                              <span>•</span>
-                              <span>{article.likes} likes</span>
-                            </div>
+                      <h3 className="text-lg font-serif font-bold mb-2 group-hover:text-purple-600 transition-colors line-clamp-2 leading-tight">
+                        {item.headline}
+                      </h3>
+
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-3 flex-1 leading-relaxed">
+                        {item.content}
+                      </p>
+
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mt-auto pt-4 border-t border-border/50">
+                        <div className="flex items-center space-x-3">
+                          <span className="font-medium">{item.author}</span>
+                          <span>•</span>
+                          <span>{formatDate(item.publishedAt)}</span>
+                        </div>
+
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-1">
+                            <Heart className="w-3 h-3" />
+                            <span>{item.likes}</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
-
-          {/* Recent AI Articles */}
-          {aiArticles.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Lightbulb className="w-6 h-6 mr-2" />
-                  Recently Generated AI Articles ({aiArticles.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {aiArticles.slice(0, 9).map(article => (
-                    <div key={article.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center justify-between mb-2">
-                        <Badge className="bg-purple-100 text-purple-800 text-xs">AI Generated</Badge>
-                        <span className="text-xs text-gray-500">{article.readTime} min read</span>
                       </div>
-                      <h3 className="font-semibold text-sm mb-2 line-clamp-2">{article.headline}</h3>
-                      <p className="text-xs text-gray-600 mb-3 line-clamp-3">{article.summary}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{article.category}</span>
-                        <div className="flex items-center space-x-2">
-                          <Eye className="w-3 h-3" />
-                          <span>{article.views}</span>
-                          <Heart className="w-3 h-3" />
-                          <span>{article.likes}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </main>
-
-        {/* Footer */}
-        <footer className="border-t bg-gray-50 dark:bg-gray-900 mt-16">
-          <div className="container mx-auto px-4 py-8">
-            <div className="text-center space-y-4">
-              <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-                <Brain className="w-4 h-4" />
-                <span>AI-Powered News Generation</span>
-              </div>
-              <p className="text-xs text-gray-500">
-                This platform uses artificial intelligence to generate news articles for demonstration purposes. 
-                All AI-generated content is clearly labeled and intended for educational use only.
-              </p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
             </div>
-          </div>
-        </footer>
+          )}
+        </section>
+      </main>
+
+      {/* AI Content Generator */}
+      <div className="max-w-4xl mx-auto mb-8">
+        <AIContentGenerator onGenerated={() => setContent(getAllContent().filter(c => c.isAI))} />
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-border/40 bg-secondary/20 mt-20 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            All content on this page is generated by AI • Powered by Meridian Post
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }
