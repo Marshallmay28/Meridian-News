@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { ArrowLeft, Plus, Sun, Moon, Eye, X, Film, Brain, Video, Mic, FileText, Image, Type, Calendar, User, Globe, Zap, BookOpen, Clock, FileAudio } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -93,9 +94,12 @@ const formatFileSize = (bytes: number): string => {
 
 export default function PublishPage() {
   const router = useRouter()
+  const { data: session } = useSession()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
+
+  const isAdmin = (session?.user as any)?.role === 'admin'
 
   const [settings, setSettings] = useState<Settings>({
     theme: 'light',
@@ -184,7 +188,8 @@ export default function PublishPage() {
   }
 
   const handlePublish = async () => {
-    if (!canPublish()) {
+    // Admins bypass publishing limits
+    if (!isAdmin && !canPublish()) {
       toast.error('Daily limit reached. Try again tomorrow.')
       return
     }
