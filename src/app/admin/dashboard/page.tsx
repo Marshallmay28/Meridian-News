@@ -59,9 +59,22 @@ export default function AdminDashboard() {
         }
     }, [router])
 
-    const loadData = () => {
-        setContent(getAllContent())
-        setStats(getContentStats())
+    const loadData = async () => {
+        try {
+            // Fetch content from database
+            const response = await fetch('/api/content')
+            if (response.ok) {
+                const data = await response.json()
+                setContent(data.content || [])
+            } else {
+                // Fallback to localStorage
+                setContent(getAllContent())
+            }
+            setStats(getContentStats())
+        } catch (error) {
+            console.error('Failed to load content:', error)
+            setContent(getAllContent())
+        }
     }
 
     const handleLogout = () => {
@@ -70,14 +83,27 @@ export default function AdminDashboard() {
         router.push('/admin')
     }
 
-    const handleDeleteContent = () => {
+    const handleDeleteContent = async () => {
         if (!contentToDelete) return
 
-        deleteContentById(contentToDelete.id)
-        toast.success('Content deleted successfully')
-        setDeleteDialogOpen(false)
-        setContentToDelete(null)
-        loadData()
+        try {
+            const response = await fetch(`/api/content/${contentToDelete.id}`, {
+                method: 'DELETE'
+            })
+
+            if (response.ok) {
+                toast.success('Content deleted successfully')
+                setDeleteDialogOpen(false)
+                setContentToDelete(null)
+                loadData() // Refresh content list
+            } else {
+                const error = await response.json()
+                toast.error(error.error || 'Failed to delete content')
+            }
+        } catch (error) {
+            console.error('Delete error:', error)
+            toast.error('Failed to delete content')
+        }
     }
 
     const handleBulkDelete = () => {
