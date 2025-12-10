@@ -177,9 +177,10 @@ export default function ArticlePage() {
     const loadedSettings = getSettings()
     setSettings(loadedSettings)
 
-    // Fetch article from database
+    // Fetch article - try database first, then localStorage
     const fetchArticle = async () => {
       try {
+        // Try database first
         const response = await fetch(`/api/content/${articleId}`)
         if (response.ok) {
           const data = await response.json()
@@ -201,33 +202,36 @@ export default function ArticlePage() {
             }
             setSettings(updatedSettings)
             saveSettings(updatedSettings)
-          } else {
-            console.error('Article not found in API response')
-          }
-        } else {
-          console.error('API response not OK:', response.status)
-          // Fallback to localStorage
-          const articles = getArticles()
-          const foundArticle = articles.find(a => a.id === articleId)
-          if (foundArticle) {
-            setArticle(foundArticle)
-            setComments(foundArticle.comments)
-            setEditForm({
-              headline: foundArticle.headline,
-              content: foundArticle.content,
-              image: foundArticle.image || ''
-            })
+            return // Success, exit early
           }
         }
       } catch (error) {
-        console.error('Failed to fetch article:', error)
-        // Fallback to localStorage
-        const articles = getArticles()
-        const foundArticle = articles.find(a => a.id === articleId)
-        if (foundArticle) {
-          setArticle(foundArticle)
-          setComments(foundArticle.comments)
+        console.log('Database fetch failed, trying localStorage:', error)
+      }
+
+      // Fallback to localStorage (always runs if database fails or article not found in API)
+      console.log('Loading from localStorage...')
+      const articles = getArticles()
+      const foundArticle = articles.find(a => a.id === articleId)
+
+      if (foundArticle) {
+        setArticle(foundArticle)
+        setComments(foundArticle.comments || [])
+        setEditForm({
+          headline: foundArticle.headline,
+          content: foundArticle.content,
+          image: foundArticle.image || ''
+        })
+
+        // Add to reading history
+        const updatedSettings = {
+          ...loadedSettings,
+          readingHistory: [articleId, ...loadedSettings.readingHistory.filter(id => id !== articleId)].slice(0, 50)
         }
+        setSettings(updatedSettings)
+        saveSettings(updatedSettings)
+      } else {
+        console.error('Article not found in database or localStorage')
       }
     }
 
