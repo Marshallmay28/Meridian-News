@@ -572,7 +572,7 @@ export default function Home() {
                       <p className="text-sm text-muted-foreground">Track your content creation</p>
                     </div>
                     <div className="text-right">
-                      {session?.user?.role === 'admin' ? (
+                      {isAdmin ? (
                         <>
                           <div className="text-2xl font-bold text-purple-600">∞</div>
                           <p className="text-xs text-purple-600">Unlimited (Admin)</p>
@@ -588,7 +588,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="space-y-3">
-                    {session?.user?.role !== 'admin' && (
+                    {!isAdmin && (
                       <div className="h-2 bg-secondary rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-purple-500 to-blue-600 transition-all"
