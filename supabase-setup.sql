@@ -1,14 +1,10 @@
 -- ============================================
--- SUPABASE RLS POLICIES - SIMPLIFIED VERSION
--- Run this FIRST to check your column types
+-- SUPABASE AUTH - UPDATED RLS POLICIES
+-- Run this AFTER migrating to Supabase Auth
 -- ============================================
 
--- First, let's check what type user_id actually is
--- Run this query separately to see your schema:
--- SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'content';
-
 -- ============================================
--- PART 1: DROP EXISTING POLICIES (if any)
+-- PART 1: DROP OLD POLICIES
 -- ============================================
 
 DROP POLICY IF EXISTS "Allow public read access" ON content;
@@ -26,7 +22,7 @@ DROP POLICY IF EXISTS "Allow authenticated delete" ON content;
 ALTER TABLE content ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- PART 3: SIMPLE POLICIES (NO USER CHECKS)
+-- PART 3: NEW POLICIES WITH NATIVE AUTH
 -- ============================================
 
 -- Policy 1: Allow anyone to read content
@@ -43,20 +39,32 @@ FOR INSERT
 TO authenticated
 WITH CHECK (true);
 
--- Policy 3: Allow authenticated users to update ANY content (temporary)
-CREATE POLICY "Allow authenticated update"
+-- Policy 3: Allow users to update their own content
+-- NOW WORKS: Uses auth.uid() from Supabase Auth
+CREATE POLICY "Allow users to update own content"
 ON content
 FOR UPDATE
 TO authenticated
-USING (true);
+USING (auth.uid()::text = user_id);
 
--- Policy 4: Allow authenticated users to delete ANY content (temporary)
--- This makes admin dashboard work immediately
-CREATE POLICY "Allow authenticated delete"
+-- Policy 4: Allow admins to delete any content
+-- NOW WORKS: Checks user_metadata for admin role
+CREATE POLICY "Allow admin delete"
 ON content
 FOR DELETE
 TO authenticated
-USING (true);
+USING (
+  (SELECT raw_user_meta_data->>'role' 
+   FROM auth.users 
+   WHERE id = auth.uid()) = 'admin'
+);
+
+-- Policy 5: Allow users to delete their own content
+CREATE POLICY "Allow users to delete own content"
+ON content
+FOR DELETE
+TO authenticated
+USING (auth.uid()::text = user_id);
 
 -- ============================================
 -- PART 4: PERFORMANCE OPTIMIZATIONS
@@ -160,34 +168,35 @@ CREATE TRIGGER content_slug_trigger
 -- ============================================
 
 /*
-✅ WHAT THIS DOES:
+✅ KEY CHANGES FROM PREVIOUS VERSION:
 
-1. Enables RLS on content table
-2. Allows ANYONE to read content (public)
-3. Allows AUTHENTICATED users to create/update/delete content
-4. Adds slug column for SEO URLs
-5. Creates performance indexes
-6. Sets up storage buckets
-7. Auto-generates slugs from headlines
+1. ✅ NOW USES auth.uid()
+   - Works with Supabase Auth
+   - No more workarounds
 
-⚠️ SECURITY NOTE:
-The delete policy allows ANY authenticated user to delete content.
-This is TEMPORARY to make your admin dashboard work.
+2. ✅ ADMIN CHECK WORKS
+   - Reads from auth.users table
+   - Checks user_metadata->>'role'
 
-🔒 TO ADD PROPER ADMIN-ONLY DELETE LATER:
-After you verify this works, you can update the delete policy to:
+3. ✅ PROPER USER OWNERSHIP
+   - Users can update/delete own content
+   - Admins can delete any content
 
-DROP POLICY "Allow authenticated delete" ON content;
+📝 TO SET ADMIN ROLE:
+1. Go to Supabase Dashboard
+2. Authentication → Users
+3. Click on user
+4. Edit User Metadata:
+   {
+     "role": "admin",
+     "name": "Admin Name"
+   }
 
-CREATE POLICY "Allow admin delete only"
-ON content FOR DELETE
-TO authenticated
-USING (
-  (SELECT raw_user_meta_data->>'role' FROM auth.users WHERE id = auth.uid()) = 'admin'
-);
-
-📝 USAGE:
-- Articles will auto-generate slugs: "My Article" → "my-article"
-- Access via: /article/my-article
-- Upload files to storage buckets, not database
+🧪 TO TEST:
+1. Register a new user
+2. Login
+3. Try creating content
+4. Try deleting content (should fail unless admin)
+5. Set role to admin
+6. Try deleting again (should work)
 */
