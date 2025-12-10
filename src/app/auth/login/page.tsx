@@ -42,7 +42,7 @@ export default function LoginPage() {
           console.error('Ban check failed', e)
         }
 
-        toast.error('Invalid email or password')
+        toast.error(error.message || 'Invalid email or password')
       } else {
         const userName = email.split('@')[0]
         toast.success(`Welcome back, ${userName}! 🎉`)

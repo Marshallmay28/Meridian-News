@@ -39,6 +39,7 @@ export default function RegisterPage() {
       const { error } = await signUp(email, password, name)
 
       if (error) {
+        // Check for specific error messages or codes if needed
         toast.error(error.message || 'Registration failed')
       } else {
         toast.success('Account created! Please check your email to verify your account.')

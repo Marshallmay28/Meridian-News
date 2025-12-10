@@ -47,24 +47,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, [])
 
     const signIn = async (email: string, password: string) => {
+        console.log('[Auth] Attempting sign in for:', email)
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             })
 
-            if (error) throw error
+            if (error) {
+                console.error('[Auth] Sign in error:', error)
+                throw error
+            }
 
+            console.log('[Auth] Sign in successful:', data)
             router.push('/')
             return { error: null }
         } catch (error) {
+            console.error('[Auth] Sign in exception:', error)
             return { error: error as Error }
         }
     }
 
     const signUp = async (email: string, password: string, name: string) => {
+        console.log('[Auth] Attempting sign up for:', email)
         try {
-            const { error } = await supabase.auth.signUp({
+            const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
                 options: {
@@ -75,11 +82,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 },
             })
 
-            if (error) throw error
+            if (error) {
+                console.error('[Auth] Sign up error:', error)
+                throw error
+            }
 
+            console.log('[Auth] Sign up successful:', data)
             router.push('/auth/login')
             return { error: null }
         } catch (error) {
+            console.error('[Auth] Sign up exception:', error)
             return { error: error as Error }
         }
     }
