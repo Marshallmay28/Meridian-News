@@ -13,15 +13,9 @@ const supabase = createClient(
 // POST - Create new content
 export async function POST(request: NextRequest) {
     try {
-        // Get user from session
+        // Get user from session (optional for migration)
         const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-
-        if (!token || !token.sub) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            )
-        }
+        const userId = token?.sub || 'anonymous'
 
         const body = await request.json()
         const {
@@ -59,7 +53,7 @@ export async function POST(request: NextRequest) {
         const { data, error } = await supabase
             .from('content')
             .insert({
-                user_id: token.sub,
+                user_id: userId,
                 headline,
                 content,
                 author,

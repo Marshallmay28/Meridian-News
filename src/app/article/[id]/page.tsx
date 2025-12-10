@@ -201,8 +201,11 @@ export default function ArticlePage() {
             }
             setSettings(updatedSettings)
             saveSettings(updatedSettings)
+          } else {
+            console.error('Article not found in API response')
           }
         } else {
+          console.error('API response not OK:', response.status)
           // Fallback to localStorage
           const articles = getArticles()
           const foundArticle = articles.find(a => a.id === articleId)
@@ -214,8 +217,6 @@ export default function ArticlePage() {
               content: foundArticle.content,
               image: foundArticle.image || ''
             })
-          } else {
-            router.push('/')
           }
         }
       } catch (error) {
@@ -226,14 +227,12 @@ export default function ArticlePage() {
         if (foundArticle) {
           setArticle(foundArticle)
           setComments(foundArticle.comments)
-        } else {
-          router.push('/')
         }
       }
     }
 
     fetchArticle()
-  }, [articleId])
+  }, [articleId, router])
 
   useEffect(() => {
     saveSettings(settings)
