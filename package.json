@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "node scripts/dev.js",
     "build": "next build && node scripts/post-build.js",
-    "start": "node scripts/start.js",
+    "start": "NODE_ENV=production node server.js",
+    "start:hostinger": "NODE_ENV=production node server.js",
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",

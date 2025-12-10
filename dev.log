@@ -1,7 +1,3 @@
- ⚠ `eslint` configuration in next.config.ts is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options
- ⚠ Invalid next.config.ts options detected: 
- ⚠     Unrecognized key(s) in object: 'eslint'
- ⚠ See more info here: https://nextjs.org/docs/messages/invalid-next-config
    ▲ Next.js 16.0.8 (Turbopack)
    - Local:         http://localhost:3000
    - Network:       http://192.168.100.3:3000
@@ -9,10 +5,18 @@
 
  ✓ Starting...
  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
- ✓ Ready in 2.4s
+ ✓ Ready in 2.9s
  ○ Compiling /_not-found/page ...
- GET /@vite/client 404 in 7.7s (compile: 6.3s, render: 1377ms)
- GET /index.tsx?t=1765238631278 404 in 7.7s (compile: 7.3s, render: 442ms)
- GET /@react-refresh 404 in 7.7s (compile: 7.1s, render: 556ms)
- GET /vite.svg 404 in 222ms (compile: 24ms, render: 198ms)
- GET /sw.js 404 in 201ms (compile: 26ms, render: 176ms)
+ GET /@vite/client 404 in 7.3s (compile: 5.9s, render: 1311ms)
+ GET /@react-refresh 404 in 7.3s (compile: 6.8s, render: 454ms)
+ GET /index.tsx?t=1765238631278 404 in 7.3s (compile: 6.7s, render: 572ms)
+ GET /@vite/client 404 in 514ms (compile: 44ms, render: 470ms)
+ GET /index.tsx?t=1765238631278 404 in 518ms (compile: 214ms, render: 304ms)
+ GET /@react-refresh 404 in 524ms (compile: 393ms, render: 130ms)
+ GET /vite.svg 404 in 348ms (compile: 25ms, render: 323ms)
+ GET /sw.js 404 in 222ms (compile: 14ms, render: 208ms)
+ GET /index.tsx?t=1765238631278 404 in 626ms (compile: 19ms, render: 607ms)
+ GET /@vite/client 404 in 637ms (compile: 163ms, render: 474ms)
+ GET /@react-refresh 404 in 295ms (compile: 25ms, render: 270ms)
+ GET /vite.svg 404 in 264ms (compile: 15ms, render: 248ms)
+ GET /sw.js 404 in 277ms (compile: 34ms, render: 243ms)
