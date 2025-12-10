@@ -205,9 +205,9 @@ export default function PublishPage() {
     setIsPublishing(true)
 
     try {
-      let videoUrl = null
-      let audioUrl = null
-      let thumbnailUrl = null
+      let videoUrl: string | null = null
+      let audioUrl: string | null = null
+      let thumbnailUrl: string | null = null
 
       if (mediaType === 'video' && uploadedFile) {
         videoUrl = URL.createObjectURL(uploadedFile)
