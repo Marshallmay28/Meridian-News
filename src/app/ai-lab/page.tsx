@@ -2,28 +2,35 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Brain, Sparkles, ArrowLeft } from 'lucide-react'
+import { Search, Moon, Sun, Brain, Video, Mic, FileText, ArrowLeft, Sparkles, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Content, MediaType, getAllContent, CATEGORIES, formatDate, Settings } from '@/lib/content-models'
+import { motion } from 'framer-motion'
 import { AIContentGenerator } from '@/components/ai/AIContentGenerator'
-if (typeof window === 'undefined') return {
-  theme: 'light',
-  fontSize: 'medium',
-  dailyCount: 0,
-  lastPublished: '',
-  savedArticles: [],
-  readingHistory: []
-}
 
-const settings = localStorage.getItem('meridianSettings')
-return settings ? JSON.parse(settings) : {
-  theme: 'light',
-  fontSize: 'medium',
-  dailyCount: 0,
-  lastPublished: '',
-  savedArticles: [],
-  readingHistory: []
-}
+const getSettings = (): Settings => {
+  if (typeof window === 'undefined') return {
+    theme: 'light',
+    fontSize: 'medium',
+    dailyCount: 0,
+    lastPublished: '',
+    savedArticles: [],
+    readingHistory: []
+  }
+
+  const settings = localStorage.getItem('meridianSettings')
+  return settings ? JSON.parse(settings) : {
+    theme: 'light',
+    fontSize: 'medium',
+    dailyCount: 0,
+    lastPublished: '',
+    savedArticles: [],
+    readingHistory: []
+  }
 }
 
 const saveSettings = (settings: Settings) => {
