@@ -47,7 +47,8 @@ export function AIContentGenerator({ onGenerated }: AIGeneratorProps) {
                 tags: [topic.toLowerCase(), 'ai-generated', category],
                 image: contentType === 'article' ? `https://picsum.photos/seed/${Date.now()}/1200/630` : undefined,
                 videoUrl: contentType === 'video' ? (youtubeUrl || '#') : undefined,
-                thumbnailUrl: contentType === 'video' ? `https://picsum.photos/seed/${Date.now()}/800/450` : undefined,
+                // YouTube small screen format: 640x360 (16:9 aspect ratio)
+                thumbnailUrl: contentType === 'video' ? `https://picsum.photos/seed/${Date.now()}/640/360` : undefined,
                 duration: contentType !== 'article' ? Math.floor(Math.random() * 600) + 300 : undefined,
                 resolution: contentType === 'video' ? '1080p' : undefined,
                 audioUrl: contentType === 'podcast' ? (audioUrl || '#') : undefined,
