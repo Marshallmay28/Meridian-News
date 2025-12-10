@@ -1,12 +1,8 @@
 import NextAuth, { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { compare } from 'bcryptjs'
-import { createClient } from '@supabase/supabase-js'
-
-// Create Supabase client directly here to avoid import issues
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -18,16 +14,12 @@ export const authOptions: NextAuthOptions = {
             },
             async authorize(credentials) {
                 try {
-                    console.log('=== LOGIN ATTEMPT ===')
-                    console.log('Email:', credentials?.email)
-
                     if (!credentials?.email || !credentials?.password) {
-                        console.error('❌ Missing credentials')
+                        logger.warn('Login attempt with missing credentials')
                         return null
                     }
 
                     // Fetch user from database
-                    console.log('🔍 Fetching user from database...')
                     const { data: user, error } = await supabase
                         .from('users')
                         .select('*')
@@ -35,29 +27,24 @@ export const authOptions: NextAuthOptions = {
                         .single()
 
                     if (error) {
-                        console.error('❌ Database error:', error.message)
+                        logger.error('Database error during login', error as Error, { email: credentials.email })
                         return null
                     }
 
                     if (!user) {
-                        console.error('❌ User not found')
+                        logger.warn('Login attempt for non-existent user', { email: credentials.email })
                         return null
                     }
 
-                    console.log('✅ User found:', user.email)
-                    console.log('User role:', user.role)
-
                     // Verify password
-                    console.log('🔐 Verifying password...')
                     const isValid = await compare(credentials.password, user.password_hash)
 
                     if (!isValid) {
-                        console.error('❌ Invalid password')
+                        logger.warn('Invalid password attempt', { email: credentials.email })
                         return null
                     }
 
-                    console.log('✅ Password valid!')
-                    console.log('✅ LOGIN SUCCESSFUL')
+                    logger.info('Successful login', { email: user.email, role: user.role })
 
                     return {
                         id: user.id,
@@ -67,7 +54,7 @@ export const authOptions: NextAuthOptions = {
                         image: user.avatar_url,
                     }
                 } catch (error) {
-                    console.error('❌ Auth error:', error)
+                    logger.error('Authentication error', error as Error)
                     return null
                 }
             },
@@ -79,18 +66,16 @@ export const authOptions: NextAuthOptions = {
                 token.id = user.id
                 token.email = user.email
                 token.name = user.name
-                token.role = (user as any).role
-                console.log('✅ JWT created for:', user.email)
+                token.role = user.role
             }
             return token
         },
         async session({ session, token }) {
             if (session.user && token) {
-                (session.user as any).id = token.id;
-                (session.user as any).role = token.role;
-                session.user.email = token.email as string;
-                session.user.name = token.name as string;
-                console.log('✅ Session created for:', token.email)
+                session.user.id = token.id as string
+                session.user.role = token.role as 'admin' | 'user'
+                session.user.email = token.email as string
+                session.user.name = token.name as string
             }
             return session
         },
@@ -105,7 +90,7 @@ export const authOptions: NextAuthOptions = {
         maxAge: 30 * 24 * 60 * 60, // 30 days
     },
     secret: process.env.NEXTAUTH_SECRET,
-    debug: true, // Enable debug mode
+    debug: process.env.NODE_ENV === 'development', // Only enable debug in development
 }
 
 const handler = NextAuth(authOptions)
