@@ -37,7 +37,36 @@ export async function GET(
             .update({ views: (content.views || 0) + 1 })
             .eq('id', id)
 
-        return NextResponse.json({ content }, { status: 200 })
+        // Transform snake_case to camelCase for frontend
+        const transformedContent = {
+            id: content.id,
+            userId: content.user_id,
+            headline: content.headline,
+            content: content.content,
+            author: content.author,
+            category: content.category,
+            mediaType: content.media_type,
+            publishedAt: content.published_at,
+            views: (content.views || 0) + 1, // Include the incremented view
+            likes: content.likes || 0,
+            readTime: content.read_time,
+            isAI: content.is_ai || false,
+            tags: content.tags || [],
+            image: content.image,
+            videoUrl: content.video_url,
+            thumbnailUrl: content.thumbnail_url,
+            duration: content.duration,
+            resolution: content.resolution,
+            fileSize: content.file_size,
+            audioUrl: content.audio_url,
+            coverImageUrl: content.cover_image_url,
+            episodeNumber: content.episode_number,
+            seasonNumber: content.season_number,
+            transcript: content.transcript,
+            description: content.description
+        }
+
+        return NextResponse.json({ content: transformedContent }, { status: 200 })
     } catch (error) {
         console.error('Server error:', error)
         return NextResponse.json(
