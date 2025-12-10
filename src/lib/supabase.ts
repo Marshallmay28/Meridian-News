@@ -1,21 +1,33 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Validate environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+        'Missing Supabase environment variables. Please check that .env.local exists and contains:\n' +
+        'NEXT_PUBLIC_SUPABASE_URL=your-project-url\n' +
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key\n' +
+        'Current values:\n' +
+        `NEXT_PUBLIC_SUPABASE_URL: ${supabaseUrl || 'undefined'}\n` +
+        `NEXT_PUBLIC_SUPABASE_ANON_KEY: ${supabaseAnonKey ? 'set' : 'undefined'}`
+    )
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Server-side client with service role key (for admin operations)
-export const supabaseAdmin = createClient(
-    supabaseUrl,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+export const supabaseAdmin = serviceRoleKey 
+    ? createClient(supabaseUrl, serviceRoleKey, {
         auth: {
             autoRefreshToken: false,
             persistSession: false
         }
-    }
-)
+    })
+    : supabase // Fallback to regular client if service role key is not set
 
 // Type definitions for database tables
 export type Database = {
