@@ -283,52 +283,54 @@ export default function Home() {
 
       {/* Premium Header */}
       <header className="sticky top-0 z-50 glass border-b border-border/40 transition-all duration-300">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-20">
-            {/* Left */}
-            <div className="flex items-center space-x-4">
-              <div className="text-xs font-medium tracking-widest text-muted-foreground uppercase hidden md:block">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        <div className="container mx-auto px-3 sm:px-4">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center space-x-2 sm:space-x-6">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
+                  <Brain className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+                </div>
+                <div className="hidden sm:block">
+                  <h1 className="text-xl font-serif font-bold tracking-tight">Meridian Post</h1>
+                  <p className="text-xs text-muted-foreground">AI-Powered News</p>
+                </div>
+                <h1 className="text-base font-serif font-bold tracking-tight sm:hidden">Meridian</h1>
               </div>
             </div>
 
-            {/* Center - Brand */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="absolute left-1/2 transform -translate-x-1/2"
-            >
-              <h1 className="text-4xl font-serif font-black tracking-tight text-foreground">
-                Meridian<span className="text-blue-600">.</span>
-              </h1>
-            </motion.div>
-
-            {/* Right - Actions */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 sm:space-x-2">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}
-                className="rounded-full hover:bg-secondary transition-colors"
+                className="rounded-full hover:bg-secondary transition-colors h-8 w-8 sm:h-10 sm:w-10"
               >
-                {settings.theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                {settings.theme === 'light' ? <Moon className="w-3 h-3 sm:w-4 sm:h-4" /> : <Sun className="w-3 h-3 sm:w-4 sm:h-4" />}
               </Button>
-
 
               <Button
                 onClick={() => router.push('/publish')}
+                size="sm"
                 className="rounded-full bg-foreground text-background hover:bg-foreground/90 shadow-lg hover:shadow-xl transition-all font-medium hidden sm:flex"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Publish
               </Button>
 
+              <Button
+                onClick={() => router.push('/publish')}
+                size="icon"
+                className="rounded-full bg-foreground text-background hover:bg-foreground/90 shadow-lg sm:hidden h-8 w-8"
+              >
+                <Plus className="w-3 h-3" />
+              </Button>
+
               <UserProfile />
 
               <Dialog open={isSyncDialogOpen} onOpenChange={setIsSyncDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="icon" className="rounded-full">
-                    <Upload className="w-4 h-4" />
+                  <Button variant="outline" size="icon" className="rounded-full hidden sm:flex h-8 w-8 sm:h-10 sm:w-10">
+                    <Upload className="w-3 h-3 sm:w-4 sm:h-4" />
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="glass-card sm:max-w-md">
