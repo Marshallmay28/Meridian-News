@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Shield, Mail, Calendar, ArrowLeft } from 'lucide-react'
+import { PageLayout } from '@/components/layout/PageLayout'
 
 export default function ProfilePage() {
     const { data: session, status } = useSession()
@@ -20,9 +21,11 @@ export default function ProfilePage() {
 
     if (status === 'loading') {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
+            <PageLayout>
+                <div className="min-h-screen flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+            </PageLayout>
         )
     }
 
@@ -38,50 +41,28 @@ export default function ProfilePage() {
         .toUpperCase() || 'U'
 
     return (
-        <div className="min-h-screen bg-background">
-            <header className="border-b border-border/40 bg-card/50 backdrop-blur-sm">
-                <div className="container mx-auto px-4 py-4">
-                    <Button
-                        variant="ghost"
-                        onClick={() => router.push('/')}
-                        className="gap-2"
-                    >
-                        <ArrowLeft className="w-4 h-4" />
-                        Back to Home
-                    </Button>
+        { initials }
+                                    </AvatarFallback >
+                                </Avatar >
+        <div>
+            <CardTitle className="text-2xl">{user?.name || 'User'}</CardTitle>
+            <CardDescription className="flex items-center gap-2 mt-1">
+                <Mail className="w-4 h-4" />
+                {user?.email}
+            </CardDescription>
+            {user?.role === 'admin' && (
+                <div className="flex items-center gap-2 mt-2">
+                    <Shield className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-600">Administrator</span>
                 </div>
-            </header>
+            )}
+        </div>
+                            </div >
+                        </CardHeader >
+                    </Card >
 
-            <main className="container mx-auto px-4 py-8 max-w-4xl">
-                <div className="space-y-6">
-                    {/* Profile Header */}
-                    <Card className="glass-card">
-                        <CardHeader>
-                            <div className="flex items-center gap-4">
-                                <Avatar className="h-20 w-20">
-                                    <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-600 to-purple-600 text-white">
-                                        {initials}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <CardTitle className="text-2xl">{user?.name || 'User'}</CardTitle>
-                                    <CardDescription className="flex items-center gap-2 mt-1">
-                                        <Mail className="w-4 h-4" />
-                                        {user?.email}
-                                    </CardDescription>
-                                    {user?.role === 'admin' && (
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <Shield className="w-4 h-4 text-purple-600" />
-                                            <span className="text-sm font-medium text-purple-600">Administrator</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </CardHeader>
-                    </Card>
-
-                    {/* Account Information */}
-                    <Card className="glass-card">
+        {/* Account Information */ }
+        < Card className = "glass-card" >
                         <CardHeader>
                             <CardTitle>Account Information</CardTitle>
                             <CardDescription>Your account details and settings</CardDescription>
@@ -108,10 +89,10 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                         </CardContent>
-                    </Card>
+                    </Card >
 
-                    {/* Publishing Stats */}
-                    <Card className="glass-card">
+        {/* Publishing Stats */ }
+        < Card className = "glass-card" >
                         <CardHeader>
                             <CardTitle>Publishing Status</CardTitle>
                             <CardDescription>Your daily publishing quota</CardDescription>
@@ -131,10 +112,10 @@ export default function ProfilePage() {
                                 )}
                             </div>
                         </CardContent>
-                    </Card>
+                    </Card >
 
-                    {/* Quick Actions */}
-                    <Card className="glass-card">
+        {/* Quick Actions */ }
+        < Card className = "glass-card" >
                         <CardHeader>
                             <CardTitle>Quick Actions</CardTitle>
                         </CardHeader>
@@ -163,9 +144,9 @@ export default function ProfilePage() {
                                 AI Lab
                             </Button>
                         </CardContent>
-                    </Card>
-                </div>
-            </main>
-        </div>
+                    </Card >
+                </div >
+            </div >
+        </PageLayout >
     )
 }
