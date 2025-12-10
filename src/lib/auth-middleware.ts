@@ -1,21 +1,15 @@
 /**
- * Authentication Middleware
- * Provides utilities for protecting API routes with authentication and role-based access control
+ * Auth Middleware for API Routes
+ * Uses Supabase Auth
  */
 
 import { NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { supabase } from './supabase'
+import { logger } from './logger'
 
-export interface AuthUser {
-    id: string
-    email: string
-    name: string
-    role: 'admin' | 'user'
-}
-
-export interface AuthResult {
+interface AuthResult {
     authenticated: boolean
-    user?: AuthUser
+    user?: any
     error?: string
 }
 
@@ -24,58 +18,63 @@ export interface AuthResult {
  */
 export async function getAuthUser(request: NextRequest): Promise<AuthResult> {
     try {
-        const token = await getToken({
-            req: request,
-            secret: process.env.NEXTAUTH_SECRET
-        })
+        // Get auth header
+        const authHeader = request.headers.get('authorization')
 
-        if (!token) {
-            return {
-                authenticated: false,
-                error: 'Not authenticated'
-            }
+        if (!authHeader) {
+            return { authenticated: false, error: 'No authorization header' }
+        }
+
+        const token = authHeader.replace('Bearer ', '')
+
+        const { data: { user }, error } = await supabase.auth.getUser(token)
+
+        if (error || !user) {
+            return { authenticated: false, error: 'Invalid token' }
         }
 
         return {
             authenticated: true,
-            user: {
-                id: token.sub as string,
-                email: token.email as string,
-                name: token.name as string,
-                role: (token.role as 'admin' | 'user') || 'user'
-            }
+            user,
         }
     } catch (error) {
-        return {
-            authenticated: false,
-            error: 'Authentication failed'
-        }
+        logger.error('Auth error', error as Error)
+        return { authenticated: false, error: 'Authentication failed' }
     }
 }
 
 /**
- * Check if user has admin role
- */
-export async function requireAdmin(request: NextRequest): Promise<AuthResult> {
-    const authResult = await getAuthUser(request)
-
-    if (!authResult.authenticated) {
-        return authResult
-    }
-
-    if (authResult.user?.role !== 'admin') {
-        return {
-            authenticated: false,
-            error: 'Admin access required'
-        }
-    }
-
-    return authResult
-}
-
-/**
- * Check if user is authenticated (any role)
+ * Require authentication
  */
 export async function requireAuth(request: NextRequest): Promise<AuthResult> {
-    return getAuthUser(request)
+    const result = await getAuthUser(request)
+
+    if (!result.authenticated) {
+        logger.warn('Unauthorized access attempt')
+    }
+
+    return result
+}
+
+/**
+ * Require admin role
+ */
+export async function requireAdmin(request: NextRequest): Promise<AuthResult> {
+    const result = await getAuthUser(request)
+
+    if (!result.authenticated) {
+        return result
+    }
+
+    const isAdmin = result.user?.user_metadata?.role === 'admin'
+
+    if (!isAdmin) {
+        logger.warn('Non-admin access attempt', { userId: result.user?.id })
+        return {
+            authenticated: false,
+            error: 'Admin access required',
+        }
+    }
+
+    return result
 }

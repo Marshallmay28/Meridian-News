@@ -1,22 +1,22 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
+import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
 import { LogOut, User, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export function UserProfile() {
-    const { data: session, status } = useSession()
+    const { user, loading, isAdmin, signOut } = useAuth()
 
     // Loading state
-    if (status === 'loading') {
+    if (loading) {
         return (
             <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
         )
     }
 
     // Not logged in - show Sign In/Sign Up buttons
-    if (!session?.user) {
+    if (!user) {
         return (
             <div className="flex items-center gap-2">
                 <Button asChild variant="ghost" size="sm">
@@ -30,14 +30,13 @@ export function UserProfile() {
     }
 
     // Logged in - show user info and logout
-    const userInitials = session.user.name
+    const userName = user.user_metadata?.name || user.email || 'User'
+    const userInitials = userName
         ?.split(' ')
         .map(n => n[0])
         .join('')
         .toUpperCase()
         .slice(0, 2) || 'U'
-
-    const isAdmin = (session.user as any).role === 'admin'
 
     return (
         <div className="flex items-center gap-2">
@@ -47,7 +46,7 @@ export function UserProfile() {
                     {userInitials}
                 </div>
                 <div className="hidden sm:block">
-                    <div className="text-sm font-medium">{session.user.name}</div>
+                    <div className="text-sm font-medium">{userName}</div>
                     {isAdmin && (
                         <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
                             <Shield className="w-3 h-3" />
@@ -77,7 +76,7 @@ export function UserProfile() {
                 variant="ghost"
                 size="icon"
                 className="rounded-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                onClick={() => signOut({ callbackUrl: '/' })}
+                onClick={() => signOut()}
                 title="Log out"
             >
                 <LogOut className="w-4 h-4" />
