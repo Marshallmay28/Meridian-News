@@ -101,20 +101,24 @@ export default function Home() {
     const loadedSettings = getSettings()
     setSettings(loadedSettings)
 
-    // Fetch content from database
-    fetch('/api/content')
-      .then(res => res.json())
-      .then(data => {
-        if (data.content) {
-          setContent(data.content)
+    // Load content from database ONLY
+    const loadContent = async () => {
+      try {
+        const response = await fetch('/api/content')
+        if (response.ok) {
+          const data = await response.json()
+          setContent(data.content || [])
+        } else {
+          console.error('Failed to load content from database')
+          setContent([]) // Show empty if database fails
         }
-      })
-      .catch(error => {
-        console.error('Failed to load content:', error)
-        // Fallback to localStorage if API fails
-        setContent(getAllContent())
-      })
+      } catch (error) {
+        console.error('Error loading content:', error)
+        setContent([]) // Show empty if error
+      }
+    }
 
+    loadContent()
     setPublishingCount(getPublishingCount(loadedSettings))
   }, [])
 
