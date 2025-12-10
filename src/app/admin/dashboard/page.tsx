@@ -184,6 +184,10 @@ export default function AdminDashboard() {
                             >
                                 {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                             </Button>
+                            <Button variant="outline" size="sm" onClick={() => router.push('/admin/users')}>
+                                <Users className="w-4 h-4 mr-2" />
+                                Users
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => router.push('/')}>
                                 <Eye className="w-4 h-4 mr-2" />
                                 View Site

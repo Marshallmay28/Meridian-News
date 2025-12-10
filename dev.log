@@ -5,11 +5,5 @@
 
  ✓ Starting...
  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
- ✓ Ready in 6.1s
- ○ Compiling /_not-found/page ...
- GET /index.tsx?t=1765238631278 404 in 13.1s (compile: 12.0s, render: 1071ms)
- GET /@react-refresh 404 in 12.9s (compile: 11.5s, render: 1421ms)
- GET /@vite/client 404 in 13.1s (compile: 12.8s, render: 304ms)
- GET /vite.svg 404 in 323ms (compile: 21ms, render: 301ms)
- GET /sw.js 404 in 199ms (compile: 13ms, render: 186ms)
- GET /sw.js 404 in 426ms (compile: 35ms, render: 390ms)
+ ✓ Ready in 2.7s
+ ○ Compiling / ...
