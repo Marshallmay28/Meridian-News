@@ -51,6 +51,15 @@ CREATE INDEX IF NOT EXISTS idx_content_is_ai ON content(is_ai);
 -- Enable Row Level Security
 ALTER TABLE content ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Anyone can view published content" ON content;
+DROP POLICY IF EXISTS "Users can insert their own content" ON content;
+DROP POLICY IF EXISTS "Authenticated users can insert content" ON content;
+DROP POLICY IF EXISTS "Users can update their own content" ON content;
+DROP POLICY IF EXISTS "Authenticated users can update content" ON content;
+DROP POLICY IF EXISTS "Users can delete their own content" ON content;
+DROP POLICY IF EXISTS "Admins can delete content" ON content;
+
 -- Policy: Anyone can read published content
 CREATE POLICY "Anyone can view published content"
   ON content FOR SELECT

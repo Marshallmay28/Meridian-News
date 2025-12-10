@@ -129,6 +129,49 @@ ALTER TABLE podcasts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_settings ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+-- Users policies
+DROP POLICY IF EXISTS "Users can view their own data" ON users;
+DROP POLICY IF EXISTS "Authenticated users can view users" ON users;
+DROP POLICY IF EXISTS "Users can update their own data" ON users;
+DROP POLICY IF EXISTS "Authenticated users can update users" ON users;
+
+-- Articles policies
+DROP POLICY IF EXISTS "Anyone can view published articles" ON articles;
+DROP POLICY IF EXISTS "Authenticated users can create articles" ON articles;
+DROP POLICY IF EXISTS "Users can update their own articles" ON articles;
+DROP POLICY IF EXISTS "Authenticated users can update articles" ON articles;
+DROP POLICY IF EXISTS "Users can delete their own articles" ON articles;
+DROP POLICY IF EXISTS "Admins can delete articles" ON articles;
+
+-- Videos policies
+DROP POLICY IF EXISTS "Anyone can view published videos" ON videos;
+DROP POLICY IF EXISTS "Authenticated users can create videos" ON videos;
+DROP POLICY IF EXISTS "Users can update their own videos" ON videos;
+DROP POLICY IF EXISTS "Authenticated users can update videos" ON videos;
+DROP POLICY IF EXISTS "Users can delete their own videos" ON videos;
+DROP POLICY IF EXISTS "Admins can delete videos" ON videos;
+
+-- Podcasts policies
+DROP POLICY IF EXISTS "Anyone can view published podcasts" ON podcasts;
+DROP POLICY IF EXISTS "Authenticated users can create podcasts" ON podcasts;
+DROP POLICY IF EXISTS "Users can update their own podcasts" ON podcasts;
+DROP POLICY IF EXISTS "Authenticated users can update podcasts" ON podcasts;
+DROP POLICY IF EXISTS "Users can delete their own podcasts" ON podcasts;
+DROP POLICY IF EXISTS "Admins can delete podcasts" ON podcasts;
+
+-- Comments policies
+DROP POLICY IF EXISTS "Anyone can view comments" ON comments;
+DROP POLICY IF EXISTS "Authenticated users can create comments" ON comments;
+DROP POLICY IF EXISTS "Users can update their own comments" ON comments;
+DROP POLICY IF EXISTS "Authenticated users can update comments" ON comments;
+DROP POLICY IF EXISTS "Users can delete their own comments" ON comments;
+DROP POLICY IF EXISTS "Admins can delete comments" ON comments;
+
+-- Platform settings policies
+DROP POLICY IF EXISTS "Anyone can view platform settings" ON platform_settings;
+DROP POLICY IF EXISTS "Only admins can modify settings" ON platform_settings;
+
 -- Users policies - Permissive for authenticated users
 CREATE POLICY "Authenticated users can view users" ON users
   FOR SELECT USING (auth.role() = 'authenticated');
