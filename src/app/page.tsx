@@ -220,9 +220,10 @@ export default function Home() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
+        onClick={() => router.push(getContentLink(item))}
+        className="cursor-pointer"
       >
-        <Card className="glass-card overflow-hidden group border-none h-full flex flex-col"
-          onClick={() => router.push(getContentLink(item))}>
+        <Card className="glass-card overflow-hidden group border-none h-full flex flex-col">
 
           {/* Thumbnail Container */}
           <div className="relative aspect-video overflow-hidden">
