@@ -33,7 +33,10 @@ SELECT
   COALESCE(raw_user_meta_data->>'name', 'User') as name,
   COALESCE(raw_user_meta_data->>'role', 'user') as role
 FROM auth.users
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (email) DO UPDATE SET
+  id = EXCLUDED.id,
+  name = EXCLUDED.name,
+  role = EXCLUDED.role;
 
 -- Verify the sync
 SELECT COUNT(*) as auth_users FROM auth.users;

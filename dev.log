@@ -747,3 +747,10 @@ Error: Route "/api/content/[id]" used `params.id`. `params` is a Promise and mus
 [2025-12-10T16:40:56.428Z] [WARN] Unauthorized access attempt
  POST /api/content 401 in 227ms (compile: 60ms, proxy.ts: 94ms, render: 74ms)
  ✓ Compiled in 1084ms
+[2025-12-10T16:44:11.231Z] [ERROR] Database error creating content {
+  code: '42501',
+  details: null,
+  hint: null,
+  message: 'new row violates row-level security policy for table "content"'
+}
+ POST /api/content 500 in 1580ms (compile: 49ms, proxy.ts: 63ms, render: 1468ms)
