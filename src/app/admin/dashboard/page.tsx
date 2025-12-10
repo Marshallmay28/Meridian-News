@@ -86,7 +86,15 @@ export default function AdminDashboard() {
     const handleDeleteContent = async () => {
         if (!contentToDelete) return
 
+        // Validate that we have a valid ID
+        if (!contentToDelete.id) {
+            console.error('Content ID is missing:', contentToDelete)
+            toast.error('Cannot delete: Invalid content ID')
+            return
+        }
+
         try {
+            console.log('Deleting content with ID:', contentToDelete.id)
             const response = await fetch(`/api/content/${contentToDelete.id}`, {
                 method: 'DELETE'
             })
