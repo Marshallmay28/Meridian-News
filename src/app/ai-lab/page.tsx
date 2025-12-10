@@ -2,35 +2,28 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Moon, Sun, Brain, Video, Mic, FileText, ArrowLeft, Sparkles, Heart, TrendingUp } from 'lucide-react'
+import { Brain, Sparkles, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Content, MediaType, getAllContent, CATEGORIES, formatDate, Settings } from '@/lib/content-models'
-import { motion } from 'framer-motion'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { AIContentGenerator } from '@/components/ai/AIContentGenerator'
+if (typeof window === 'undefined') return {
+  theme: 'light',
+  fontSize: 'medium',
+  dailyCount: 0,
+  lastPublished: '',
+  savedArticles: [],
+  readingHistory: []
+}
 
-const getSettings = (): Settings => {
-  if (typeof window === 'undefined') return {
-    theme: 'light',
-    fontSize: 'medium',
-    dailyCount: 0,
-    lastPublished: '',
-    savedArticles: [],
-    readingHistory: []
-  }
-
-  const settings = localStorage.getItem('meridianSettings')
-  return settings ? JSON.parse(settings) : {
-    theme: 'light',
-    fontSize: 'medium',
-    dailyCount: 0,
-    lastPublished: '',
-    savedArticles: [],
-    readingHistory: []
-  }
+const settings = localStorage.getItem('meridianSettings')
+return settings ? JSON.parse(settings) : {
+  theme: 'light',
+  fontSize: 'medium',
+  dailyCount: 0,
+  lastPublished: '',
+  savedArticles: [],
+  readingHistory: []
+}
 }
 
 const saveSettings = (settings: Settings) => {
@@ -47,13 +40,33 @@ export default function AILabPage() {
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
+  const loadContent = async () => {
+    try {
+      // Fetch from database
+      const response = await fetch('/api/content')
+      if (response.ok) {
+        const data = await response.json()
+        // Filter only AI-generated content
+        const aiContent = data.content?.filter((item: Content) => item.isAI) || []
+        setContent(aiContent)
+      } else {
+        // Fallback to localStorage
+        const allContent = getAllContent()
+        const aiContent = allContent.filter(item => item.isAI)
+        setContent(aiContent)
+      }
+    } catch (error) {
+      console.error('Failed to load content:', error)
+      const allContent = getAllContent()
+      const aiContent = allContent.filter(item => item.isAI)
+      setContent(aiContent)
+    }
+  }
+
   useEffect(() => {
     const loadedSettings = getSettings()
     setSettings(loadedSettings)
-    // Filter only AI-generated content
-    const allContent = getAllContent()
-    const aiContent = allContent.filter(item => item.isAI === true)
-    setContent(aiContent)
+    loadContent()
   }, [])
 
   useEffect(() => {
@@ -177,6 +190,11 @@ export default function AILabPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+
+        {/* AI Generator */}
+        <section className="mb-12">
+          <AIContentGenerator onGenerated={loadContent} />
+        </section>
 
         {/* Search & Filters */}
         <section className="mb-12">
