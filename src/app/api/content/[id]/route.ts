@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { getToken } from 'next-auth/jwt'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,6 +38,50 @@ export async function GET(
             .eq('id', id)
 
         return NextResponse.json({ content }, { status: 200 })
+    } catch (error) {
+        console.error('Server error:', error)
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        )
+    }
+}
+
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: { id: string } }
+) {
+    try {
+        // Check authentication and admin role
+        const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+
+        if (!token || token.role !== 'admin') {
+            return NextResponse.json(
+                { error: 'Unauthorized - Admin access required' },
+                { status: 403 }
+            )
+        }
+
+        const { id } = params
+
+        // Delete content
+        const { error } = await supabase
+            .from('content')
+            .delete()
+            .eq('id', id)
+
+        if (error) {
+            console.error('Delete error:', error)
+            return NextResponse.json(
+                { error: 'Failed to delete content' },
+                { status: 500 }
+            )
+        }
+
+        return NextResponse.json(
+            { message: 'Content deleted successfully' },
+            { status: 200 }
+        )
     } catch (error) {
         console.error('Server error:', error)
         return NextResponse.json(
