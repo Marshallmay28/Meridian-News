@@ -177,35 +177,62 @@ export default function ArticlePage() {
     const loadedSettings = getSettings()
     setSettings(loadedSettings)
 
-    const articles = getArticles()
-    const foundArticle = articles.find(a => a.id === articleId)
+    // Fetch article from database
+    const fetchArticle = async () => {
+      try {
+        const response = await fetch(`/api/content/${articleId}`)
+        if (response.ok) {
+          const data = await response.json()
+          const foundArticle = data.content
 
-    if (foundArticle) {
-      setArticle(foundArticle)
-      setComments(foundArticle.comments)
-      setEditForm({
-        headline: foundArticle.headline,
-        content: foundArticle.content,
-        image: foundArticle.image || ''
-      })
+          if (foundArticle) {
+            setArticle(foundArticle)
+            setComments(foundArticle.comments || [])
+            setEditForm({
+              headline: foundArticle.headline,
+              content: foundArticle.content,
+              image: foundArticle.image || ''
+            })
 
-      // Update view count
-      const updatedArticles = articles.map(a =>
-        a.id === articleId ? { ...a, views: a.views + 1 } : a
-      )
-      saveArticles(updatedArticles)
-      setArticle({ ...foundArticle, views: foundArticle.views + 1 })
-
-      // Add to reading history
-      const updatedSettings = {
-        ...loadedSettings,
-        readingHistory: [articleId, ...loadedSettings.readingHistory.filter(id => id !== articleId)].slice(0, 50)
+            // Add to reading history
+            const updatedSettings = {
+              ...loadedSettings,
+              readingHistory: [articleId, ...loadedSettings.readingHistory.filter(id => id !== articleId)].slice(0, 50)
+            }
+            setSettings(updatedSettings)
+            saveSettings(updatedSettings)
+          }
+        } else {
+          // Fallback to localStorage
+          const articles = getArticles()
+          const foundArticle = articles.find(a => a.id === articleId)
+          if (foundArticle) {
+            setArticle(foundArticle)
+            setComments(foundArticle.comments)
+            setEditForm({
+              headline: foundArticle.headline,
+              content: foundArticle.content,
+              image: foundArticle.image || ''
+            })
+          } else {
+            router.push('/')
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch article:', error)
+        // Fallback to localStorage
+        const articles = getArticles()
+        const foundArticle = articles.find(a => a.id === articleId)
+        if (foundArticle) {
+          setArticle(foundArticle)
+          setComments(foundArticle.comments)
+        } else {
+          router.push('/')
+        }
       }
-      setSettings(updatedSettings)
-      saveSettings(updatedSettings)
-    } else {
-      router.push('/')
     }
+
+    fetchArticle()
   }, [articleId])
 
   useEffect(() => {
@@ -525,8 +552,8 @@ export default function ArticlePage() {
 
                 {/* Article Body - NYT Style Typography */}
                 <div className={`font-serif text-gray-800 leading-relaxed space-y-6 ${settings.fontSize === 'small' ? 'text-base' :
-                    settings.fontSize === 'large' ? 'text-xl' :
-                      'text-lg'
+                  settings.fontSize === 'large' ? 'text-xl' :
+                    'text-lg'
                   }`}>
                   {article.content.split('\n').map((paragraph, index) => (
                     <p key={index} className={index === 0 ? 'first-letter:text-6xl first-letter:font-bold first-letter:mr-2 first-letter:float-left first-letter:leading-none' : ''}>
