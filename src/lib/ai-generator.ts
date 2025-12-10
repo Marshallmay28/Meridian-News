@@ -12,7 +12,7 @@ export interface AIArticle {
   publishedAt: string
   views: number
   likes: number
-  comments: Array<{user: string, text: string, date: string}>
+  comments: Array<{ user: string, text: string, date: string }>
   readTime: number
   tags: string[]
   isAI: boolean
@@ -28,7 +28,7 @@ export interface AIConfig {
   lastGeneration: string
   nextGeneration: string
   topicsCovered: string[]
-  generationHistory: Array<{timestamp: string, category: string, count: number}>
+  generationHistory: Array<{ timestamp: string, category: string, count: number }>
   userPreferences: {
     preferredCategories: string[]
     aiContentEnabled: boolean
@@ -40,7 +40,7 @@ export class AIArticleGenerator {
   private topics: Record<string, string[]> = {
     breaking: [
       "Major Earthquake Strikes Pacific Region",
-      "Stock Market Experiences Historic Rally", 
+      "Stock Market Experiences Historic Rally",
       "New Tech Startup Reaches $1B Valuation",
       "Global Climate Summit Reaches Landmark Agreement",
       "Revolutionary Medical Breakthrough Announced"
@@ -104,49 +104,49 @@ export class AIArticleGenerator {
   }
 
   private templates = {
-    news: (event: string, location: string, source: string, consequence: string) => 
+    news: (event: string, location: string, source: string, consequence: string) =>
       `In a significant development that has captured global attention, ${event} has occurred in ${location}. According to ${source}, this could lead to ${consequence}. The situation is still developing, and officials are urging the public to stay informed through official channels.`,
-    
+
     feature: (topic: string, insight: string, solution: string, counterpoint: string) =>
       `Deep dive into ${topic} reveals ${insight}. Experts suggest ${solution} while critics argue ${counterpoint}. The debate highlights the complexity of the issue and the need for balanced approaches to address the challenges ahead.`,
-    
+
     opinion: (position: string, issue: string, evidence: string, opposition: string) =>
       `Why ${position} is the right approach to ${issue}. The evidence shows ${evidence} despite ${opposition}. As we navigate these complex times, it's crucial to consider all perspectives and make informed decisions based on facts and careful analysis.`,
-    
+
     analysis: (subject: string, data: string, implications: string, future: string) =>
       `Analysis of ${subject} reveals important patterns based on ${data}. The implications suggest ${implications} which could reshape our understanding of ${future}. Experts are closely monitoring these developments as they unfold.`
   }
 
   private locations = [
-    "New York", "London", "Tokyo", "Singapore", "Berlin", 
+    "New York", "London", "Tokyo", "Singapore", "Berlin",
     "Sydney", "Paris", "Toronto", "Dubai", "San Francisco",
     "Hong Kong", "Mumbai", "São Paulo", "Cairo", "Mexico City"
   ]
 
   private institutions = [
-    "International Policy Institute", "Global Economic Forum", 
+    "International Policy Institute", "Global Economic Forum",
     "Center for Technological Advancement", "United Nations Research Division",
     "World Health Organization", "International Energy Agency",
     "Global Climate Research Center", "Space Exploration Institute"
   ]
 
   private experts = [
-    "Dr. Sarah Chen", "Professor James Wilson", "Analyst Maria Rodriguez", 
+    "Dr. Sarah Chen", "Professor James Wilson", "Analyst Maria Rodriguez",
     "Expert David Kim", "Researcher Emma Thompson", "Specialist Michael Brown",
     "Consultant Lisa Anderson", "Scientist Robert Taylor", "Advisor Jennifer White"
   ]
 
   generateArticle(category: string = 'random', template: string = 'news'): AIArticle {
     const categories = Object.keys(this.topics)
-    const selectedCategory = category === 'random' ? 
+    const selectedCategory = category === 'random' ?
       categories[Math.floor(Math.random() * categories.length)] : category
-    
+
     const topicList = this.topics[selectedCategory] || this.topics.world
     const selectedTopic = topicList[Math.floor(Math.random() * topicList.length)]
-    
+
     const headline = this.generateHeadline(selectedTopic, selectedCategory)
     const content = this.generateContent(headline, selectedCategory, template)
-    
+
     return {
       id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       headline: headline,
@@ -173,25 +173,25 @@ export class AIArticleGenerator {
   generateMultipleArticles(count: number = 5): AIArticle[] {
     const articles: AIArticle[] = []
     const categories = Object.keys(this.topics)
-    
+
     for (let i = 0; i < count; i++) {
       const category = categories[Math.floor(Math.random() * categories.length)]
       articles.push(this.generateArticle(category))
     }
-    
+
     return articles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
   }
 
   generateBreakingNews(): AIArticle {
     const breakingTopics = [
-      "Stock Market Crash", "Natural Disaster", "Political Crisis", 
+      "Stock Market Crash", "Natural Disaster", "Political Crisis",
       "Tech Breakthrough", "Sports Championship", "Health Emergency"
     ]
-    
+
     const topic = breakingTopics[Math.floor(Math.random() * breakingTopics.length)]
     const location = this.getRandomLocation()
     const severity = ["MINOR", "MODERATE", "MAJOR"][Math.floor(Math.random() * 3)]
-    
+
     return {
       id: `ai-breaking-${Date.now()}`,
       headline: `🚨 BREAKING: ${topic} in ${location}`,
@@ -224,7 +224,7 @@ export class AIArticleGenerator {
       `${topic} - Experts Weigh In`,
       `${topic} Shakes Up ${category.charAt(0).toUpperCase() + category.slice(1)}`
     ]
-    
+
     return headlineVariations[Math.floor(Math.random() * headlineVariations.length)]
   }
 
@@ -232,7 +232,7 @@ export class AIArticleGenerator {
     const location = this.getRandomLocation()
     const institution = this.getRandomInstitution()
     const expert = this.getRandomExpert()
-    
+
     const paragraphs = [
       `# ${headline}`,
       ``,
@@ -256,7 +256,7 @@ export class AIArticleGenerator {
       ``,
       `*This AI-generated article is based on simulated data and is intended for demonstration and educational purposes only. Real news should be verified through official sources.*`
     ]
-    
+
     return paragraphs.join('\n\n')
   }
 
@@ -267,11 +267,11 @@ export class AIArticleGenerator {
       `In-depth reporting on ${headline} and its impact on global affairs.`,
       `${headline}: Complete coverage with expert insights and future outlook.`
     ]
-    
+
     return summaries[Math.floor(Math.random() * summaries.length)]
   }
 
-  private generateRandomComments(): Array<{user: string, text: string, date: string}> {
+  private generateRandomComments(): Array<{ user: string, text: string, date: string }> {
     const commentTemplates = [
       { user: "NewsReader123", text: "Fascinating analysis! Thanks for the comprehensive coverage.", date: "2 hours ago" },
       { user: "GlobalCitizen", text: "This is exactly why I follow quality journalism. Well done.", date: "3 hours ago" },
@@ -279,19 +279,19 @@ export class AIArticleGenerator {
       { user: "PolicyWatcher", text: "The expert insights here are particularly valuable. Great context.", date: "5 hours ago" },
       { user: "InformedReader", text: "This changes everything. Need to share this with my network.", date: "6 hours ago" }
     ]
-    
+
     const count = Math.floor(Math.random() * 4) + 1
     return commentTemplates.slice(0, count)
   }
 
-  private generateUrgentComments(): Array<{user: string, text: string, date: string}> {
+  private generateUrgentComments(): Array<{ user: string, text: string, date: string }> {
     const urgentComments = [
       { user: "BreakingNewsFan", text: "First! This is huge news!", date: "1 minute ago" },
       { user: "UrgentUpdates", text: "Everyone please stay safe. Following official channels.", date: "2 minutes ago" },
       { user: "NewsJunkie", text: "Can't believe this is happening. More details needed ASAP.", date: "5 minutes ago" },
       { user: "SafetyFirst", text: "Hope everyone in the affected area is okay.", date: "8 minutes ago" }
     ]
-    
+
     return urgentComments.slice(0, Math.floor(Math.random() * 3) + 1)
   }
 
@@ -307,7 +307,7 @@ export class AIArticleGenerator {
       science: ["research", "discovery", "space", "climate", "physics"],
       breaking: ["urgent", "emergency", "developing", "alert", "critical"]
     }
-    
+
     return tagSets[category] || tagSets.world
   }
 
@@ -318,7 +318,7 @@ export class AIArticleGenerator {
       "Financial Times Global", "CNN International", "BBC World Service",
       "Al Jazeera English", "The Guardian Global"
     ]
-    
+
     const count = Math.floor(Math.random() * 3) + 2
     return sources.slice(0, count)
   }
@@ -341,14 +341,14 @@ export class AIArticleGenerator {
       "Automated News Service", "Virtual News Desk", "AI Content Generator",
       "Meridian Post AI", "News Writing AI", "Digital Reporter"
     ]
-    
+
     return authors[Math.floor(Math.random() * authors.length)]
   }
 
   private getRandomImage(category: string): string {
     const imageMap: Record<string, string> = {
       world: "https://images.unsplash.com/photo-15267792576-99f1229b5317",
-      politics: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d", 
+      politics: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
       technology: "https://images.unsplash.com/photo-1518709268805-4e9042af2176",
       business: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
       sports: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211",
@@ -357,9 +357,38 @@ export class AIArticleGenerator {
       science: "https://images.unsplash.com/photo-15320943498840-543bc11b2342",
       breaking: "https://images.unsplash.com/photo-1586953208448-b95a79798f07"
     }
-    
+
     const baseImage = imageMap[category] || imageMap.world
     return `${baseImage}?auto=format&fit=crop&w=1200&q=80`
+  }
+  private videoIds: Record<string, string[]> = {
+    world: ["HSv0k_BfXG0", "MQEkFppWaRI"], // NASA ISS Tours
+    science: ["HSv0k_BfXG0", "MQEkFppWaRI"],
+    technology: ["HSv0k_BfXG0", "aqz-KE-bpKQ"], // NASA or Big Buck Bunny (Open Movie)
+    nature: ["xT0tWq1K_X0", "7h1L5-oV8sM"], // Relaxing Nature
+    health: ["xT0tWq1K_X0"], // Relaxing Nature/Health
+    entertainment: ["aqz-KE-bpKQ"], // Big Buck Bunny
+    breaking: ["HSv0k_BfXG0"],
+    politics: ["MQEkFppWaRI"], // Generic fallback
+    business: ["MQEkFppWaRI"], // Generic fallback
+    sports: ["aqz-KE-bpKQ"] // Generic fallback
+  }
+
+  generateVideoContent(category: string = 'random'): { headline: string, content: string, videoUrl: string, thumbnailUrl: string } {
+    const article = this.generateArticle(category)
+    const categories = Object.keys(this.videoIds)
+    const selectedCategory = category === 'random' || !this.videoIds[category] ?
+      categories[Math.floor(Math.random() * categories.length)] : category
+
+    const videos = this.videoIds[selectedCategory] || this.videoIds.world
+    const videoId = videos[Math.floor(Math.random() * videos.length)]
+
+    return {
+      headline: article.headline,
+      content: article.content,
+      videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+    }
   }
 }
 

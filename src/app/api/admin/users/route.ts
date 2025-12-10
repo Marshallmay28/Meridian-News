@@ -1,51 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdmin } from '@/lib/auth-middleware'
+import { logger } from '@/lib/logger'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
     try {
-        // Get authorization header
-        const authHeader = request.headers.get('authorization')
-        if (!authHeader) {
-            return NextResponse.json({ error: 'No authorization header' }, { status: 401 })
+        const authResult = await requireAdmin(request)
+        if (!authResult.authenticated) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            )
         }
 
-        // Verify the user is an admin
-        const token = authHeader.replace('Bearer ', '')
-        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers()
 
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (error) {
+            throw error
         }
 
-        // Check if user is admin
-        const isAdmin = user.user_metadata?.role === 'admin'
-        if (!isAdmin) {
-            return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 })
-        }
-
-        // Get all users from Supabase Auth
-        const { data: { users }, error: usersError } = await supabaseAdmin.auth.admin.listUsers()
-
-        if (usersError) {
-            console.error('Error fetching users:', usersError)
-            return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
-        }
-
-        // Format user data
-        const formattedUsers = users.map(u => ({
-            id: u.id,
-            email: u.email,
-            name: u.user_metadata?.name || 'Unknown',
-            role: u.user_metadata?.role || 'user',
-            created_at: u.created_at,
-            banned: u.banned_until ? new Date(u.banned_until) > new Date() : false,
-            email_confirmed: !!u.email_confirmed_at,
-            last_sign_in: u.last_sign_in_at
+        // Transform users to match UI expectations
+        const formattedUsers = users.map(user => ({
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.name || 'Unknown',
+            role: user.user_metadata?.role || 'user',
+            created_at: user.created_at,
+            banned: !!user.banned_until && new Date(user.banned_until) > new Date(),
+            email_confirmed: !!user.email_confirmed_at,
+            last_sign_in: user.last_sign_in_at
         }))
 
-        return NextResponse.json({ users: formattedUsers }, { status: 200 })
+        return NextResponse.json({ users: formattedUsers })
     } catch (error) {
-        console.error('Error in GET /api/admin/users:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        logger.error('Error fetching users', error as Error)
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        )
     }
 }

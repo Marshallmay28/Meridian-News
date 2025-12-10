@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseAdmin } from '@/lib/supabase'
 import { transformContentArray, type DbContent } from '@/lib/content-transformer'
 import { requireAuth } from '@/lib/auth-middleware'
 import { logger } from '@/lib/logger'
@@ -54,8 +54,9 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Insert content
-        const { data, error } = await supabase
+        // Insert content using Admin client to bypass RLS policies
+        // We Authentication is already verified by requireAuth middleware
+        const { data, error } = await supabaseAdmin
             .from('content')
             .insert({
                 user_id: userId,
@@ -84,6 +85,12 @@ export async function POST(request: NextRequest) {
             .single()
 
         if (error) {
+            console.error('Database error creating content:', {
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint
+            })
             logger.error('Database error creating content', error as Error)
             return NextResponse.json(
                 { error: 'Failed to create content' },

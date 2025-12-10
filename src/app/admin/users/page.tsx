@@ -40,6 +40,9 @@ export default function AdminUsersPage() {
     const [loading, setLoading] = useState(true)
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [userToDelete, setUserToDelete] = useState<User | null>(null)
+    const [banDialogOpen, setBanDialogOpen] = useState(false)
+    const [userToBan, setUserToBan] = useState<User | null>(null)
+    const [banReason, setBanReason] = useState('')
 
     useEffect(() => {
         if (!isAdmin) {
@@ -88,7 +91,26 @@ export default function AdminUsersPage() {
         }
     }
 
-    const handleBanToggle = async (userId: string, currentlyBanned: boolean) => {
+    const openBanDialog = (user: User) => {
+        if (user.banned) {
+            // Unban immediately
+            handleBanToggle(user.id, true)
+        } else {
+            // Open dialog for ban reason
+            setUserToBan(user)
+            setBanReason('')
+            setBanDialogOpen(true)
+        }
+    }
+
+    const confirmBan = async () => {
+        if (!userToBan) return
+        await handleBanToggle(userToBan.id, false, banReason)
+        setBanDialogOpen(false)
+        setUserToBan(null)
+    }
+
+    const handleBanToggle = async (userId: string, currentlyBanned: boolean, reason?: string) => {
         try {
             const token = session?.access_token
 
@@ -98,7 +120,10 @@ export default function AdminUsersPage() {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ banned: !currentlyBanned })
+                body: JSON.stringify({
+                    banned: !currentlyBanned,
+                    banReason: reason
+                })
             })
 
             if (!response.ok) {
@@ -292,7 +317,7 @@ export default function AdminUsersPage() {
                                                     <Button
                                                         size="sm"
                                                         variant={u.banned ? "outline" : "destructive"}
-                                                        onClick={() => handleBanToggle(u.id, u.banned)}
+                                                        onClick={() => openBanDialog(u)}
                                                         disabled={u.role === 'admin'}
                                                     >
                                                         <Ban className="w-3 h-3 mr-1" />
@@ -342,6 +367,41 @@ export default function AdminUsersPage() {
                             className="bg-red-600 hover:bg-red-700"
                         >
                             Delete User
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Ban Confirmation Dialog */}
+            <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center">
+                            <Ban className="w-5 h-5 mr-2 text-destructive" />
+                            Ban User
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to ban <strong>{userToBan?.email}</strong>?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="py-4">
+                        <label className="text-sm font-medium mb-2 block">Reason for Ban:</label>
+                        <Input
+                            placeholder="e.g. Violation of Terms of Service"
+                            value={banReason}
+                            onChange={(e) => setBanReason(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground mt-2">
+                            This message will be shown to the user when they try to log in.
+                        </p>
+                    </div>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmBan}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            Ban User
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

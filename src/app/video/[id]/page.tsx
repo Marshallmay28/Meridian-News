@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Search, Menu, Plus, Sun, Moon, Heart, MessageSquare, Share2, Clock, Calendar, User, ArrowLeft, Bookmark, TrendingUp, Send, X, Edit, Trash2, Brain, Play, Pause, Volume2, Maximize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useTheme } from 'next-themes'
+import { useAuth } from '@/contexts/auth-context'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -33,7 +35,6 @@ const getVideos = (): VideoType[] => {
 
 const getSettings = (): Settings => {
   if (typeof window === 'undefined') return {
-    theme: 'light',
     fontSize: 'medium',
     dailyCount: 0,
     lastPublished: '',
@@ -43,7 +44,6 @@ const getSettings = (): Settings => {
 
   const settings = localStorage.getItem('meridianSettings')
   return settings ? JSON.parse(settings) : {
-    theme: 'light',
     fontSize: 'medium',
     dailyCount: 0,
     lastPublished: '',
@@ -68,10 +68,16 @@ export default function VideoPage() {
   const params = useParams()
   const router = useRouter()
   const videoId = params.id as string
+  const { isAdmin, user } = useAuth()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const [video, setVideo] = useState<VideoType | null>(null)
   const [settings, setSettings] = useState<Settings>({
-    theme: 'light',
     fontSize: 'medium',
     dailyCount: 0,
     lastPublished: '',
@@ -101,46 +107,83 @@ export default function VideoPage() {
     const loadedSettings = getSettings()
     setSettings(loadedSettings)
 
-    const videos = getVideos()
-    const foundVideo = videos.find(v => v.id === videoId)
+    const fetchVideo = async () => {
+      try {
+        // Try database first
+        const response = await fetch(`/api/content/${videoId}`)
+        if (response.ok) {
+          const data = await response.json()
+          const foundVideo = data.content
 
-    if (foundVideo) {
-      setVideo(foundVideo)
-      setComments(foundVideo.comments)
-      setEditForm({
-        headline: foundVideo.headline,
-        content: foundVideo.content,
-        videoUrl: foundVideo.videoUrl,
-        thumbnailUrl: foundVideo.thumbnailUrl,
-        description: foundVideo.description || ''
-      })
+          if (foundVideo) {
+            setVideo(foundVideo)
+            setComments(foundVideo.comments || [])
+            setEditForm({
+              headline: foundVideo.headline,
+              content: foundVideo.content,
+              videoUrl: foundVideo.videoUrl || '',
+              thumbnailUrl: foundVideo.thumbnailUrl || '',
+              description: foundVideo.description || ''
+            })
 
-      // Update view count
-      const updatedVideos = videos.map(v =>
-        v.id === videoId ? { ...v, views: v.views + 1 } : v
-      )
-      saveVideos(updatedVideos)
-      setVideo({ ...foundVideo, views: foundVideo.views + 1 })
+            // Update view count locally (API already did it)
+            setVideo(prev => prev ? { ...prev, views: (foundVideo.views || 0) } : foundVideo)
 
-      // Add to reading history
-      const updatedSettings = {
-        ...loadedSettings,
-        readingHistory: [videoId, ...loadedSettings.readingHistory.filter(id => id !== videoId)].slice(0, 50)
+            // Add to reading history
+            const updatedSettings = {
+              ...loadedSettings,
+              readingHistory: [videoId, ...loadedSettings.readingHistory.filter(id => id !== videoId)].slice(0, 50)
+            }
+            setSettings(updatedSettings)
+            saveSettings(updatedSettings)
+            return // Success, exit early
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching video from API:', error)
       }
-      setSettings(updatedSettings)
-      saveSettings(updatedSettings)
-    } else {
-      router.push('/')
+
+      // Fallback to localStorage
+      const videos = getVideos()
+      const foundVideo = videos.find(v => v.id === videoId)
+
+      if (foundVideo) {
+        setVideo(foundVideo)
+        setComments(foundVideo.comments)
+        setEditForm({
+          headline: foundVideo.headline,
+          content: foundVideo.content,
+          videoUrl: foundVideo.videoUrl,
+          thumbnailUrl: foundVideo.thumbnailUrl,
+          description: foundVideo.description || ''
+        })
+
+        // Update view count
+        const updatedVideos = videos.map(v =>
+          v.id === videoId ? { ...v, views: v.views + 1 } : v
+        )
+        saveVideos(updatedVideos)
+        setVideo({ ...foundVideo, views: foundVideo.views + 1 })
+
+        // Add to reading history
+        const updatedSettings = {
+          ...loadedSettings,
+          readingHistory: [videoId, ...loadedSettings.readingHistory.filter(id => id !== videoId)].slice(0, 50)
+        }
+        setSettings(updatedSettings)
+        saveSettings(updatedSettings)
+      } else {
+        console.error('Video not found in database or localStorage')
+        // Only redirect if absolutely sure (optional, or maybe show a "Not Found" UI)
+        // router.push('/') 
+      }
     }
+
+    fetchVideo()
   }, [videoId])
 
   useEffect(() => {
     saveSettings(settings)
-    if (settings.theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
   }, [settings])
 
   const handleLike = () => {
@@ -217,14 +260,26 @@ export default function VideoPage() {
     setIsEditDialogOpen(false)
   }
 
-  const handleDeleteVideo = () => {
-    if (!video || !canEditVideo(video)) return
+  const handleDeleteVideo = async () => {
+    if (!video || !canEditVideo(video, user)) return
 
     if (confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
-      const videos = getVideos()
-      const updatedVideos = videos.filter(v => v.id !== videoId)
-      saveVideos(updatedVideos)
-      router.push('/')
+      try {
+        if (isAdmin) {
+          const response = await fetch(`/api/content/${videoId}`, { method: 'DELETE' })
+          if (!response.ok) {
+            throw new Error('Failed to delete from server')
+          }
+        }
+
+        const videos = getVideos()
+        const updatedVideos = videos.filter(v => v.id !== videoId)
+        saveVideos(updatedVideos)
+        router.push('/')
+      } catch (error) {
+        console.error('Delete error:', error)
+        alert('Failed to delete video. Please try again.')
+      }
     }
   }
 
@@ -272,14 +327,21 @@ export default function VideoPage() {
     }
   }
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause()
       } else {
-        videoRef.current.play()
+        try {
+          await videoRef.current.play()
+        } catch (error) {
+          // Playback request was interrupted or failed (e.g. user paused immediately or navigated away)
+          // We can safely ignore AbortError as it's a standard behavior in these cases
+          if ((error as DOMException).name !== 'AbortError') {
+            console.error("Playback error:", error)
+          }
+        }
       }
-      setIsPlaying(!isPlaying)
     }
   }
 
@@ -329,478 +391,489 @@ export default function VideoPage() {
   }
 
   const isSaved = settings.savedArticles.includes(videoId)
-  const canEdit = canEditVideo(video)
+  const canEdit = video ? canEditVideo(video, user) : false
   const relatedVideos = getRelatedVideos()
 
   return (
-    <div className={`min-h-screen ${settings.theme === 'dark' ? 'dark' : ''}`}>
-      <div className="bg-white text-black">
-        {/* Header */}
-        <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-3 sm:px-4">
-            <div className="flex items-center justify-between h-14 sm:h-16">
-              <div className="flex items-center space-x-2 sm:space-x-6">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push('/')}
-                  className="text-black hover:text-blue-600 text-xs sm:text-sm"
-                >
-                  <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">Back to Home</span>
-                  <span className="sm:hidden">Back</span>
-                </Button>
-                <nav className="hidden md:flex items-center space-x-6">
-                  <button className="text-sm font-medium text-gray-600 hover:text-black">Videos</button>
-                  <button className="text-sm font-medium text-gray-600 hover:text-black">Podcasts</button>
-                  <button className="text-sm font-medium text-gray-600 hover:text-black">Articles</button>
-                </nav>
-              </div>
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      {/* Header */}
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4">
+          <div className="flex items-center justify-between h-14 sm:h-16">
+            <div className="flex items-center space-x-2 sm:space-x-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/')}
+                className="text-muted-foreground hover:text-primary text-xs sm:text-sm">
+                <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Back to Home</span>
+                <span className="sm:hidden">Back</span>
+              </Button>
+              <nav className="hidden md:flex items-center space-x-6">
+                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">World</button>
+                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Politics</button>
+                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Technology</button>
+                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Business</button>
+                <button className="text-sm font-medium text-muted-foreground hover:text-foreground">Opinion</button>
+              </nav>
+            </div>
 
-              <div className="flex items-center space-x-2 sm:space-x-6">
-                <h1 className="text-lg sm:text-2xl font-serif font-bold text-black">
-                  <span className="hidden sm:inline">The Meridian Post</span>
-                  <span className="sm:hidden">Meridian</span>
-                </h1>
-              </div>
-
-              <div className="flex items-center space-x-2 sm:space-x-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}
-                  className="text-black hover:text-blue-600"
-                >
-                  {settings.theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSaveVideo}
-                  className="text-black hover:text-blue-600"
-                >
-                  <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={shareVideo}
-                  className="text-black hover:text-blue-600"
-                >
-                  <Share2 className="w-4 h-4" />
-                </Button>
-
-                {canEdit && (
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsEditDialogOpen(true)}
-                      className="text-black hover:text-blue-600"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleDeleteVideo}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
+            <div className="flex items-center space-x-2 sm:space-x-6">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
+                  <Brain className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+                </div>
+                <div className="hidden sm:block">
+                  <h1 className="text-xl font-serif font-bold tracking-tight">Meridian Post</h1>
+                  <p className="text-xs text-muted-foreground">AI-Powered News</p>
+                </div>
+                <h1 className="text-base font-serif font-bold tracking-tight sm:hidden">Meridian</h1>
               </div>
             </div>
-          </div>
-        </header>
 
-        {/* Breadcrumb */}
-        <div className="border-b border-gray-100 bg-gray-50">
-          <div className="max-w-4xl mx-auto px-4 py-2">
-            <nav className="flex items-center space-x-2 text-sm">
-              <button
-                onClick={() => router.push('/')}
-                className="text-gray-600 hover:text-black"
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                className="text-muted-foreground hover:text-primary"
               >
-                Home
-              </button>
-              <span className="text-gray-400">/</span>
-              <button
-                onClick={() => router.push(`/?category=${video.category}&mediaType=video`)}
-                className="text-gray-600 hover:text-black capitalize"
+                {!mounted ? (
+                  <span className="w-4 h-4" />
+                ) : theme === 'light' ? (
+                  <Moon className="w-4 h-4" />
+                ) : (
+                  <Sun className="w-4 h-4" />
+                )}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSaveVideo}
+                className="text-muted-foreground hover:text-primary"
               >
-                Videos
-              </button>
-              <span className="text-gray-400">/</span>
-              <span className="text-gray-900 truncate max-w-xs">{video.headline}</span>
-            </nav>
+                <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={shareVideo}
+                className="text-muted-foreground hover:text-primary"
+              >
+                <Share2 className="w-4 h-4" />
+              </Button>
+
+              {canEdit && (
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditDialogOpen(true)}
+                    className="text-muted-foreground hover:text-primary"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDeleteVideo}
+                    className="text-destructive hover:text-destructive/80"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Main Video Layout */}
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Main Content */}
-            <main className="lg:col-span-3">
-              <article className="py-8">
-                {/* Video Header */}
-                <header className="mb-6">
-                  <div className="mb-4">
-                    <Badge className="bg-red-600 text-white text-sm">
-                      🎥 Video
-                    </Badge>
-                  </div>
+      {/* Breadcrumb */}
+      <div className="border-b bg-muted/30">
+        <div className="max-w-4xl mx-auto px-4 py-2">
+          <nav className="flex items-center space-x-2 text-sm">
+            <button
+              onClick={() => router.push('/')}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Home
+            </button>
+            <span className="text-muted-foreground">/</span>
+            <button
+              onClick={() => router.push(`/?category=${video.category}`)}
+              className="text-muted-foreground hover:text-foreground capitalize"
+            >
+              {video.category}
+            </button>
+            <span className="text-muted-foreground">/</span>
+            <span className="text-foreground truncate max-w-xs">{video.headline}</span>
+          </nav>
+        </div>
+      </div>
 
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold leading-tight mb-4 text-black">
-                    {video.headline}
-                  </h1>
-
-                  <div className="flex flex-wrap items-center justify-between text-sm text-gray-600 mb-6 pb-6 border-b border-gray-200">
-                    <div className="flex items-center space-x-4 mb-2 lg:mb-0">
-                      <span className="font-medium">{video.author}</span>
-                      <span>•</span>
-                      <span>{formatFullDate(video.publishedAt)}</span>
-                      <span>•</span>
-                      <span>{formatDuration(video.duration)}</span>
-                    </div>
-
-                    <div className="flex items-center space-x-4">
-                      <span>{video.views} views</span>
-                      <button
-                        onClick={handleLike}
-                        className="flex items-center space-x-1 hover:text-red-600 transition-colors"
-                      >
-                        <Heart className="w-4 h-4" />
-                        <span>{video.likes}</span>
-                      </button>
-                    </div>
-                  </div>
-                </header>
-
-                {/* Video Player */}
-                <div className="mb-8">
-                  <div className="relative bg-black rounded-lg overflow-hidden">
-                    <video
-                      ref={videoRef}
-                      src={video.videoUrl}
-                      className="w-full aspect-video"
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                      onTimeUpdate={handleTimeUpdate}
-                      onLoadedMetadata={handleLoadedMetadata}
-                      controls={false}
-                    />
-
-                    {/* Custom Controls */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                      {/* Progress Bar */}
-                      <div className="mb-4">
-                        <Slider
-                          value={[currentTime]}
-                          onValueChange={handleSeek}
-                          max={duration}
-                          step={1}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-white mt-1">
-                          <span>{formatTime(currentTime)}</span>
-                          <span>{formatTime(duration)}</span>
-                        </div>
-                      </div>
-
-                      {/* Controls */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handlePlayPause}
-                            className="text-white hover:text-gray-300"
-                          >
-                            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                          </Button>
-
-                          <div className="flex items-center space-x-2">
-                            <Volume2 className="w-4 h-4 text-white" />
-                            <Slider
-                              value={[volume]}
-                              onValueChange={handleVolumeChange}
-                              max={100}
-                              step={1}
-                              className="w-24"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <span className="text-white text-sm">{playbackSpeed}x</span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setPlaybackSpeed(playbackSpeed === 1 ? 1.5 : playbackSpeed === 1.5 ? 2 : 1)}
-                            className="text-white hover:text-gray-300"
-                          >
-                            Speed
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-white hover:text-gray-300"
-                          >
-                            <Maximize2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      {/* Main Video Layout */}
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Content */}
+          <main className="lg:col-span-3">
+            <article className="py-8">
+              {/* Video Header */}
+              <header className="mb-6">
+                <div className="mb-4">
+                  <Badge className="bg-red-600 text-white text-sm">
+                    🎥 Video
+                  </Badge>
                 </div>
 
-                {/* Video Description */}
-                <div className="mb-8">
-                  <h3 className="text-xl font-serif font-bold mb-4">About this video</h3>
-                  <div className="prose prose-lg max-w-none">
-                    <p className="text-gray-800 leading-relaxed">
-                      {video.description || video.content}
-                    </p>
-                  </div>
-                </div>
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold leading-tight mb-4 text-foreground">
+                  {video.headline}
+                </h1>
 
-                {/* Video Actions */}
-                <footer className="mt-12 pt-8 border-t border-gray-200">
-                  <div className="flex items-center justify-center space-x-6">
-                    <Button
-                      variant="outline"
+                <div className="flex flex-wrap items-center justify-between text-sm text-gray-600 mb-6 pb-6 border-b border-gray-200">
+                  <div className="flex items-center space-x-4 mb-2 lg:mb-0">
+                    <span className="font-medium">{video.author}</span>
+                    <span>•</span>
+                    <span>{formatFullDate(video.publishedAt)}</span>
+                    <span>•</span>
+                    <span>{formatDuration(video.duration)}</span>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <span>{video.views} views</span>
+                    <button
                       onClick={handleLike}
-                      className="flex items-center space-x-2"
+                      className="flex items-center space-x-1 hover:text-red-600 transition-colors"
                     >
                       <Heart className="w-4 h-4" />
-                      <span>{video.likes} Likes</span>
-                    </Button>
+                      <span>{video.likes}</span>
+                    </button>
+                  </div>
+                </div>
+              </header>
 
-                    <Button
-                      variant="outline"
-                      onClick={shareVideo}
-                      className="flex items-center space-x-2"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span>Share</span>
-                    </Button>
+              {/* Video Player */}
+              <div className="mb-8">
+                <div className="relative bg-black rounded-lg overflow-hidden">
+                  <video
+                    ref={videoRef}
+                    src={video.videoUrl || undefined}
+                    className="w-full aspect-video"
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onTimeUpdate={handleTimeUpdate}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    controls={false}
+                  />
 
+                  {/* Custom Controls */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                    {/* Progress Bar */}
+                    <div className="mb-4">
+                      <Slider
+                        value={[currentTime]}
+                        onValueChange={handleSeek}
+                        max={duration}
+                        step={1}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-xs text-white mt-1">
+                        <span>{formatTime(currentTime)}</span>
+                        <span>{formatTime(duration)}</span>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handlePlayPause}
+                          className="text-white hover:text-gray-300"
+                        >
+                          {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                        </Button>
+
+                        <div className="flex items-center space-x-2">
+                          <Volume2 className="w-4 h-4 text-white" />
+                          <Slider
+                            value={[volume]}
+                            onValueChange={handleVolumeChange}
+                            max={100}
+                            step={1}
+                            className="w-24"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <span className="text-white text-sm">{playbackSpeed}x</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPlaybackSpeed(playbackSpeed === 1 ? 1.5 : playbackSpeed === 1.5 ? 2 : 1)}
+                          className="text-white hover:text-gray-300"
+                        >
+                          Speed
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-white hover:text-gray-300"
+                        >
+                          <Maximize2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Video Description */}
+              <div className="mb-8">
+                <h3 className="text-xl font-serif font-bold mb-4">About this video</h3>
+                <div className="prose prose-lg max-w-none">
+                  <p className="text-gray-800 leading-relaxed">
+                    {video.description || video.content}
+                  </p>
+                </div>
+              </div>
+
+              {/* Video Actions */}
+              <footer className="mt-12 pt-8 border-t border-gray-200">
+                <div className="flex items-center justify-center space-x-6">
+                  <Button
+                    variant="outline"
+                    onClick={handleLike}
+                    className="flex items-center space-x-2"
+                  >
+                    <Heart className="w-4 h-4" />
+                    <span>{video.likes} Likes</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={shareVideo}
+                    className="flex items-center space-x-2"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Share</span>
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={handleSaveVideo}
+                    className="flex items-center space-x-2"
+                  >
+                    <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+                    <span>{isSaved ? 'Saved' : 'Save'}</span>
+                  </Button>
+                </div>
+              </footer>
+            </article>
+
+            {/* Comments Section */}
+            <section className="py-8 border-t border-gray-200">
+              <h3 className="text-2xl font-serif font-bold mb-6">Comments ({comments.length})</h3>
+
+              {/* Comment Form */}
+              <Card className="mb-6">
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="Your name (optional)"
+                      value={commentAuthor}
+                      onChange={(e) => setCommentAuthor(e.target.value)}
+                      className="border-gray-300"
+                    />
+                    <Textarea
+                      placeholder="Share your thoughts about this video..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      rows={3}
+                      className="border-gray-300"
+                    />
                     <Button
-                      variant="outline"
-                      onClick={handleSaveVideo}
-                      className="flex items-center space-x-2"
+                      onClick={handleComment}
+                      disabled={!newComment.trim()}
+                      className="bg-black text-white hover:bg-gray-800"
                     >
-                      <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-                      <span>{isSaved ? 'Saved' : 'Save'}</span>
+                      <Send className="w-4 h-4 mr-2" />
+                      Post Comment
                     </Button>
                   </div>
-                </footer>
-              </article>
+                </CardContent>
+              </Card>
 
-              {/* Comments Section */}
-              <section className="py-8 border-t border-gray-200">
-                <h3 className="text-2xl font-serif font-bold mb-6">Comments ({comments.length})</h3>
+              {/* Comments List */}
+              <div className="space-y-6">
+                {comments.map(comment => (
+                  <Card key={comment.id}>
+                    <CardContent className="p-6">
+                      <div className="flex items-start space-x-4">
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback className="bg-gray-200 text-gray-700">
+                            {comment.author.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-3">
+                            <span className="font-medium text-black">{comment.author}</span>
+                            <span className="text-sm text-gray-500">
+                              {formatDate(comment.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-gray-800 leading-relaxed">
+                            {comment.content}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          </main>
 
-                {/* Comment Form */}
-                <Card className="mb-6">
-                  <CardContent className="p-6">
-                    <div className="space-y-4">
-                      <Input
-                        placeholder="Your name (optional)"
-                        value={commentAuthor}
-                        onChange={(e) => setCommentAuthor(e.target.value)}
-                        className="border-gray-300"
-                      />
-                      <Textarea
-                        placeholder="Share your thoughts about this video..."
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        rows={3}
-                        className="border-gray-300"
-                      />
-                      <Button
-                        onClick={handleComment}
-                        disabled={!newComment.trim()}
-                        className="bg-black text-white hover:bg-gray-800"
+          {/* Sidebar */}
+          <aside className="lg:col-span-1">
+            <div className="sticky top-24 space-y-8 py-8">
+              {/* Video Details */}
+              <section className="border border-gray-200 rounded-lg p-6">
+                <h3 className="font-serif font-bold text-lg mb-3">Video Details</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Duration</span>
+                    <span className="font-medium">{formatDuration(video.duration)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Resolution</span>
+                    <span className="font-medium">{video.resolution || 'HD'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">File Size</span>
+                    <span className="font-medium">{video.fileSize || 'Unknown'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Published</span>
+                    <span className="font-medium">{formatFullDate(video.publishedAt)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Views</span>
+                    <span className="font-medium">{video.views}</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Related Videos */}
+              {relatedVideos.length > 0 && (
+                <section className="border border-gray-200 rounded-lg p-6">
+                  <h3 className="font-serif font-bold text-lg mb-4">Related Videos</h3>
+                  <div className="space-y-4">
+                    {relatedVideos.map(relatedVideo => (
+                      <article
+                        key={relatedVideo.id}
+                        className="cursor-pointer group"
+                        onClick={() => router.push(`/video/${relatedVideo.id}`)}
                       >
-                        <Send className="w-4 h-4 mr-2" />
-                        Post Comment
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Comments List */}
-                <div className="space-y-6">
-                  {comments.map(comment => (
-                    <Card key={comment.id}>
-                      <CardContent className="p-6">
-                        <div className="flex items-start space-x-4">
-                          <Avatar className="w-10 h-10">
-                            <AvatarFallback className="bg-gray-200 text-gray-700">
-                              {comment.author.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                        <div className="flex space-x-3">
+                          <div className="flex-shrink-0 w-24 h-16 overflow-hidden rounded">
+                            <img
+                              src={relatedVideo.thumbnailUrl}
+                              alt={relatedVideo.headline}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
                           <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-3">
-                              <span className="font-medium text-black">{comment.author}</span>
-                              <span className="text-sm text-gray-500">
-                                {formatDate(comment.createdAt)}
-                              </span>
-                            </div>
-                            <p className="text-gray-800 leading-relaxed">
-                              {comment.content}
+                            <h4 className="text-sm font-serif font-bold text-black group-hover:text-blue-600 transition-colors leading-tight mb-1">
+                              {relatedVideo.headline}
+                            </h4>
+                            <p className="text-xs text-gray-600">
+                              {formatDuration(relatedVideo.duration)}
                             </p>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Newsletter */}
+              <section className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                <h3 className="font-serif font-bold text-lg mb-3">Newsletter</h3>
+                <p className="text-sm text-gray-700 mb-4">
+                  Get the latest videos and articles delivered to your inbox.
+                </p>
+                <div className="space-y-3">
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    className="border-gray-300"
+                  />
+                  <Button className="w-full bg-black text-white hover:bg-gray-800">
+                    Subscribe
+                  </Button>
                 </div>
               </section>
-            </main>
-
-            {/* Sidebar */}
-            <aside className="lg:col-span-1">
-              <div className="sticky top-24 space-y-8 py-8">
-                {/* Video Details */}
-                <section className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="font-serif font-bold text-lg mb-3">Video Details</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Duration</span>
-                      <span className="font-medium">{formatDuration(video.duration)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Resolution</span>
-                      <span className="font-medium">{video.resolution || 'HD'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">File Size</span>
-                      <span className="font-medium">{video.fileSize || 'Unknown'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Published</span>
-                      <span className="font-medium">{formatFullDate(video.publishedAt)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Views</span>
-                      <span className="font-medium">{video.views}</span>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Related Videos */}
-                {relatedVideos.length > 0 && (
-                  <section className="border border-gray-200 rounded-lg p-6">
-                    <h3 className="font-serif font-bold text-lg mb-4">Related Videos</h3>
-                    <div className="space-y-4">
-                      {relatedVideos.map(relatedVideo => (
-                        <article
-                          key={relatedVideo.id}
-                          className="cursor-pointer group"
-                          onClick={() => router.push(`/video/${relatedVideo.id}`)}
-                        >
-                          <div className="flex space-x-3">
-                            <div className="flex-shrink-0 w-24 h-16 overflow-hidden rounded">
-                              <img
-                                src={relatedVideo.thumbnailUrl}
-                                alt={relatedVideo.headline}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="text-sm font-serif font-bold text-black group-hover:text-blue-600 transition-colors leading-tight mb-1">
-                                {relatedVideo.headline}
-                              </h4>
-                              <p className="text-xs text-gray-600">
-                                {formatDuration(relatedVideo.duration)}
-                              </p>
-                            </div>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {/* Newsletter */}
-                <section className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                  <h3 className="font-serif font-bold text-lg mb-3">Newsletter</h3>
-                  <p className="text-sm text-gray-700 mb-4">
-                    Get the latest videos and articles delivered to your inbox.
-                  </p>
-                  <div className="space-y-3">
-                    <Input
-                      type="email"
-                      placeholder="Enter your email"
-                      className="border-gray-300"
-                    />
-                    <Button className="w-full bg-black text-white hover:bg-gray-800">
-                      Subscribe
-                    </Button>
-                  </div>
-                </section>
-              </div>
-            </aside>
-          </div>
-        </div>
-
-        {/* Edit Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Video</DialogTitle>
-              <DialogDescription>
-                Make changes to your video. You can only edit videos within 24 hours of publishing.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="headline">Headline</Label>
-                <Input
-                  id="headline"
-                  value={editForm.headline}
-                  onChange={(e) => setEditForm({ ...editForm, headline: e.target.value })}
-                  className="border-gray-300"
-                />
-              </div>
-              <div>
-                <Label htmlFor="content">Description</Label>
-                <Textarea
-                  id="content"
-                  value={editForm.content}
-                  onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
-                  rows={6}
-                  className="border-gray-300"
-                />
-              </div>
-              <div>
-                <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
-                <Input
-                  id="thumbnailUrl"
-                  value={editForm.thumbnailUrl}
-                  onChange={(e) => setEditForm({ ...editForm, thumbnailUrl: e.target.value })}
-                  placeholder="https://example.com/thumbnail.jpg"
-                  className="border-gray-300"
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleEditVideo}>
-                  Save Changes
-                </Button>
-              </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </aside>
+        </div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Video</DialogTitle>
+            <DialogDescription>
+              Make changes to your video. You can only edit videos within 24 hours of publishing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="headline">Headline</Label>
+              <Input
+                id="headline"
+                value={editForm.headline}
+                onChange={(e) => setEditForm({ ...editForm, headline: e.target.value })}
+                className="border-gray-300"
+              />
+            </div>
+            <div>
+              <Label htmlFor="content">Description</Label>
+              <Textarea
+                id="content"
+                value={editForm.content}
+                onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                rows={6}
+                className="border-gray-300"
+              />
+            </div>
+            <div>
+              <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
+              <Input
+                id="thumbnailUrl"
+                value={editForm.thumbnailUrl}
+                onChange={(e) => setEditForm({ ...editForm, thumbnailUrl: e.target.value })}
+                placeholder="https://example.com/thumbnail.jpg"
+                className="border-gray-300"
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleEditVideo}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

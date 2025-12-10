@@ -18,23 +18,29 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog'
 import { Content, getAllContent, CATEGORIES, formatDate } from '@/lib/content-models'
+import { useAuth } from '@/contexts/auth-context'
 import {
-    isAdmin,
-    logoutAdmin,
-    deleteContentById,
-    getContentStats,
     getPlatformSettings,
     savePlatformSettings,
-    deleteAllAIContent,
-    deleteAllUserContent,
     type PlatformSettings
 } from '@/lib/admin-utils'
 import { toast } from 'sonner'
 
 export default function AdminDashboard() {
+    const { isAdmin, signOut, session } = useAuth()
     const router = useRouter()
     const [content, setContent] = useState<Content[]>([])
-    const [stats, setStats] = useState(getContentStats())
+    const [stats, setStats] = useState({
+        total: 0,
+        articles: 0,
+        videos: 0,
+        podcasts: 0,
+        aiGenerated: 0,
+        userGenerated: 0,
+        todayPosts: 0,
+        totalViews: 0,
+        totalLikes: 0
+    })
     const [settings, setSettings] = useState<PlatformSettings>(getPlatformSettings())
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [contentToDelete, setContentToDelete] = useState<Content | null>(null)
@@ -45,7 +51,7 @@ export default function AdminDashboard() {
     const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
     useEffect(() => {
-        if (!isAdmin()) {
+        if (!isAdmin) {
             router.push('/admin')
             return
         }
@@ -57,49 +63,58 @@ export default function AdminDashboard() {
         if (savedTheme === 'dark') {
             document.documentElement.classList.add('dark')
         }
-    }, [router])
+    }, [isAdmin, router])
 
-    const loadData = async () => {
-        try {
-            // Fetch content from database
-            const response = await fetch('/api/content')
-            if (response.ok) {
-                const data = await response.json()
-                setContent(data.content || [])
-            } else {
-                // Fallback to localStorage
-                setContent(getAllContent())
-            }
-            setStats(getContentStats())
-        } catch (error) {
-            setContent(getAllContent())
+    const calculateStats = (data: Content[]) => {
+        const today = new Date().toDateString()
+        return {
+            total: data.length,
+            articles: data.filter(c => c.mediaType === 'article').length,
+            videos: data.filter(c => c.mediaType === 'video').length,
+            podcasts: data.filter(c => c.mediaType === 'podcast').length,
+            aiGenerated: data.filter(c => c.isAI).length,
+            userGenerated: data.filter(c => !c.isAI).length,
+            todayPosts: data.filter(c => new Date(c.publishedAt).toDateString() === today).length,
+            totalViews: data.reduce((sum, c) => sum + (c.views || 0), 0),
+            totalLikes: data.reduce((sum, c) => sum + (c.likes || 0), 0)
         }
     }
 
-    const handleLogout = () => {
-        logoutAdmin()
+    const loadData = async () => {
+        try {
+            // Fetch content from database - get more items for admin view
+            const response = await fetch('/api/content?limit=1000')
+            if (response.ok) {
+                const data = await response.json()
+                const contentData = data.content || []
+                setContent(contentData)
+                setStats(calculateStats(contentData))
+            }
+        } catch (error) {
+            console.error('Failed to load content', error)
+            toast.error('Failed to load content')
+        }
+    }
+
+    const handleLogout = async () => {
+        await signOut()
         toast.success('Logged out successfully')
         router.push('/admin')
     }
 
     const handleDeleteContent = async () => {
-        if (!contentToDelete) return
-
-        // Validate that we have a valid ID
-        if (!contentToDelete.id) {
-            toast.error('Cannot delete: Invalid content ID')
-            return
-        }
+        if (!contentToDelete || !contentToDelete.id) return
 
         try {
+            const token = session?.access_token
             const response = await fetch(`/api/content/${contentToDelete.id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
             })
 
             if (response.ok) {
-                // Clean up localStorage to prevent deleted content from persisting
-                deleteContentById(contentToDelete.id)
-
                 toast.success('Content deleted successfully')
                 setDeleteDialogOpen(false)
                 setContentToDelete(null)
@@ -114,16 +129,35 @@ export default function AdminDashboard() {
     }
 
     const handleBulkDelete = async () => {
-        if (bulkDeleteType === 'ai') {
-            await deleteAllAIContent()
-            toast.success('All AI content deleted')
-        } else if (bulkDeleteType === 'user') {
-            await deleteAllUserContent()
-            toast.success('All user content deleted')
+        const itemsToDelete = content.filter(item => {
+            if (bulkDeleteType === 'ai') return item.isAI
+            if (bulkDeleteType === 'user') return !item.isAI
+            return false
+        })
+
+        toast.info(`Deleting ${itemsToDelete.length} items...`)
+
+        const token = session?.access_token
+
+        // Process in batches
+        const promises = itemsToDelete.map(item =>
+            fetch(`/api/content/${item.id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+        )
+
+        try {
+            await Promise.all(promises)
+            toast.success('Bulk delete completed')
+            setBulkDeleteDialogOpen(false)
+            setBulkDeleteType(null)
+            loadData()
+        } catch (error) {
+            toast.error('Failed to complete bulk delete')
         }
-        setBulkDeleteDialogOpen(false)
-        setBulkDeleteType(null)
-        loadData()
     }
 
     const handleSettingsChange = (key: keyof PlatformSettings, value: any) => {
@@ -158,7 +192,7 @@ export default function AdminDashboard() {
         return matchesSearch && matchesFilter
     })
 
-    if (!isAdmin()) {
+    if (!isAdmin) {
         return null
     }
 

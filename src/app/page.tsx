@@ -15,12 +15,12 @@ import { Content, MediaType, getAllContent, CATEGORIES, getMediaIcon, getMediaTy
 import { UTILITY_CLASSES } from '@/lib/styles'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import { useTheme } from 'next-themes'
 import { UserProfile } from '@/components/auth/UserProfile'
 
 // ... Keep existing utility functions ...
 const getSettings = (): Settings => {
   if (typeof window === 'undefined') return {
-    theme: 'light',
     fontSize: 'medium',
     dailyCount: 0,
     lastPublished: '',
@@ -29,19 +29,21 @@ const getSettings = (): Settings => {
   }
 
   const settings = localStorage.getItem('meridianSettings')
-  return settings ? JSON.parse(settings) : {
-    theme: 'light',
-    fontSize: 'medium',
-    dailyCount: 0,
-    lastPublished: '',
-    savedArticles: [],
-    readingHistory: []
+  const parsedSettings = settings ? JSON.parse(settings) : {}
+  return {
+    fontSize: parsedSettings.fontSize || 'medium',
+    dailyCount: parsedSettings.dailyCount || 0,
+    lastPublished: parsedSettings.lastPublished || '',
+    savedArticles: parsedSettings.savedArticles || [],
+    readingHistory: parsedSettings.readingHistory || []
   }
 }
 
 const saveSettings = (settings: Settings) => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('meridianSettings', JSON.stringify(settings))
+    const existing = localStorage.getItem('meridianSettings')
+    const parsed = existing ? JSON.parse(existing) : {}
+    localStorage.setItem('meridianSettings', JSON.stringify({ ...parsed, ...settings }))
   }
 }
 
@@ -81,9 +83,15 @@ const getPublishingCount = (settings: Settings): { count: number; remaining: num
 export default function Home() {
   const router = useRouter()
   const { user, isAdmin } = useAuth()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
   const [content, setContent] = useState<Content[]>([])
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const [settings, setSettings] = useState<Settings>({
-    theme: 'light',
     fontSize: 'medium',
     dailyCount: 0,
     lastPublished: '',
@@ -124,11 +132,6 @@ export default function Home() {
 
   useEffect(() => {
     saveSettings(settings)
-    if (settings.theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
   }, [settings])
 
   const filteredContent = content.filter(item => {
@@ -298,7 +301,7 @@ export default function Home() {
   }
 
   return (
-    <div className={`min-h-screen ${settings.theme === 'dark' ? 'dark' : ''} bg-background selection:bg-blue-100 selection:text-blue-900 dark:selection:bg-blue-900 dark:selection:text-blue-100`}>
+    <div className="min-h-screen bg-background text-foreground selection:bg-blue-100 selection:text-blue-900 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
 
       {/* Premium Header */}
       <header className="sticky top-0 z-50 glass border-b border-border/40 transition-all duration-300">
@@ -321,10 +324,16 @@ export default function Home() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
                 className="rounded-full hover:bg-secondary transition-colors h-8 w-8 sm:h-10 sm:w-10"
               >
-                {settings.theme === 'light' ? <Moon className="w-3 h-3 sm:w-4 sm:h-4" /> : <Sun className="w-3 h-3 sm:w-4 sm:h-4" />}
+                {!mounted ? (
+                  <span className="w-3 h-3 sm:w-4 sm:h-4" />
+                ) : theme === 'light' ? (
+                  <Moon className="w-3 h-3 sm:w-4 sm:h-4" />
+                ) : (
+                  <Sun className="w-3 h-3 sm:w-4 sm:h-4" />
+                )}
               </Button>
 
               <Button
@@ -710,6 +719,12 @@ export default function Home() {
               <span className="hover:text-foreground cursor-pointer">Terms</span>
               <span className="hover:text-foreground cursor-pointer">Cookies</span>
             </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <span className="text-xs font-serif italic text-muted-foreground/40 hover:text-primary/60 transition-colors cursor-default">
+              AMAMU
+            </span>
           </div>
         </div>
       </footer>

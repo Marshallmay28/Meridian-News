@@ -11,10 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Content, MediaType, getAllContent, CATEGORIES, formatDate, Settings } from '@/lib/content-models'
 import { motion } from 'framer-motion'
 import { AIContentGenerator } from '@/components/ai/AIContentGenerator'
+import { useTheme } from 'next-themes'
 
 const getSettings = (): Settings => {
   if (typeof window === 'undefined') return {
-    theme: 'light',
     fontSize: 'medium',
     dailyCount: 0,
     lastPublished: '',
@@ -23,24 +23,33 @@ const getSettings = (): Settings => {
   }
 
   const settings = localStorage.getItem('meridianSettings')
-  return settings ? JSON.parse(settings) : {
-    theme: 'light',
-    fontSize: 'medium',
-    dailyCount: 0,
-    lastPublished: '',
-    savedArticles: [],
-    readingHistory: []
+  const parsedSettings = settings ? JSON.parse(settings) : {}
+  return {
+    fontSize: parsedSettings.fontSize || 'medium',
+    dailyCount: parsedSettings.dailyCount || 0,
+    lastPublished: parsedSettings.lastPublished || '',
+    savedArticles: parsedSettings.savedArticles || [],
+    readingHistory: parsedSettings.readingHistory || []
   }
 }
 
 const saveSettings = (settings: Settings) => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('meridianSettings', JSON.stringify(settings))
+    const existing = localStorage.getItem('meridianSettings')
+    const parsed = existing ? JSON.parse(existing) : {}
+    localStorage.setItem('meridianSettings', JSON.stringify({ ...parsed, ...settings }))
   }
 }
 
 export default function AILabPage() {
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const [content, setContent] = useState<Content[]>([])
   const [settings, setSettings] = useState<Settings>(getSettings())
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
@@ -72,11 +81,6 @@ export default function AILabPage() {
 
   useEffect(() => {
     saveSettings(settings)
-    if (settings.theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
   }, [settings])
 
   const filteredContent = content.filter(item => {
@@ -109,10 +113,10 @@ export default function AILabPage() {
   }
 
   return (
-    <div className={`min-h-screen ${settings.theme === 'dark' ? 'dark' : ''} bg-gradient-to-br from-purple-50 via-background to-blue-50 dark:from-purple-950/20 dark:via-background dark:to-blue-950/20`}>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-background to-blue-50 dark:from-purple-950/20 dark:via-background dark:to-blue-950/20 text-foreground transition-colors duration-300">
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/70 dark:bg-black/70 backdrop-blur-md border-b border-purple-200/40 dark:border-purple-800/40">
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-purple-200/40 dark:border-purple-800/40 transition-all duration-300">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-20">
             {/* Left */}
@@ -129,28 +133,32 @@ export default function AILabPage() {
             </div>
 
             {/* Center - Brand */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="absolute left-1/2 transform -translate-x-1/2 flex items-center space-x-2"
-            >
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl">
-                <Brain className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
+                <Brain className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
               </div>
-              <h1 className="text-3xl font-serif font-black tracking-tight">
-                AI Lab
-              </h1>
-            </motion.div>
+              <div className="hidden sm:block">
+                <h1 className="text-xl font-serif font-bold tracking-tight">Meridian Post</h1>
+                <p className="text-xs text-muted-foreground">AI-Powered News</p>
+              </div>
+              <h1 className="text-base font-serif font-bold tracking-tight sm:hidden">Meridian</h1>
+            </div>
 
             {/* Right - Actions */}
             <div className="flex items-center space-x-2">
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
                 className="rounded-full hover:bg-purple-100 dark:hover:bg-purple-900/20"
               >
-                {settings.theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                {!mounted ? (
+                  <span className="w-4 h-4" />
+                ) : theme === 'light' ? (
+                  <Moon className="w-4 h-4" />
+                ) : (
+                  <Sun className="w-4 h-4" />
+                )}
               </Button>
             </div>
           </div>

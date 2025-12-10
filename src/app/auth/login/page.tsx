@@ -25,6 +25,23 @@ export default function LoginPage() {
       const { error } = await signIn(email, password)
 
       if (error) {
+        // Check if user is banned
+        try {
+          const banCheck = await fetch('/api/auth/check-ban', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          })
+          const banData = await banCheck.json()
+
+          if (banData.banned) {
+            toast.error(`Account Banned: ${banData.reason}`)
+            return
+          }
+        } catch (e) {
+          console.error('Ban check failed', e)
+        }
+
         toast.error('Invalid email or password')
       } else {
         const userName = email.split('@')[0]

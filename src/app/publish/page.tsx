@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { v4 as uuidv4 } from 'uuid'
 import { useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import { useAuth } from '@/contexts/auth-context'
 import { ArrowLeft, Plus, Sun, Moon, Eye, X, Film, Brain, Video, Mic, FileText, Image, Type, Calendar, User, Globe, Zap, BookOpen, Clock, FileAudio } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { aiGenerator, AIArticle } from '@/lib/ai-generator'
 import { Content, MediaType, getAllContent, CATEGORIES, getMediaIcon, getMediaTypeName, saveContent, Settings, MEDIA_CONFIG } from '@/lib/content-models'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
 
 const getDeviceId = () => {
   let deviceId = localStorage.getItem('meridianDeviceId')
@@ -26,7 +29,6 @@ const getDeviceId = () => {
 
 const getSettings = (): Settings => {
   if (typeof window === 'undefined') return {
-    theme: 'light',
     fontSize: 'medium',
     dailyCount: 0,
     lastPublished: '',
@@ -35,19 +37,21 @@ const getSettings = (): Settings => {
   }
 
   const settings = localStorage.getItem('meridianSettings')
-  return settings ? JSON.parse(settings) : {
-    theme: 'light',
-    fontSize: 'medium',
-    dailyCount: 0,
-    lastPublished: '',
-    savedArticles: [],
-    readingHistory: []
+  const parsedSettings = settings ? JSON.parse(settings) : {}
+  return {
+    fontSize: parsedSettings.fontSize || 'medium',
+    dailyCount: parsedSettings.dailyCount || 0,
+    lastPublished: parsedSettings.lastPublished || '',
+    savedArticles: parsedSettings.savedArticles || [],
+    readingHistory: parsedSettings.readingHistory || []
   }
 }
 
 const saveSettings = (settings: Settings) => {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('meridianSettings', JSON.stringify(settings))
+    // Merge with existing settings to preserve theme if it's still there from old versions
+    const existingSettings = getSettings()
+    localStorage.setItem('meridianSettings', JSON.stringify({ ...existingSettings, ...settings }))
   }
 }
 
@@ -94,167 +98,66 @@ const formatFileSize = (bytes: number): string => {
 
 export default function PublishPage() {
   const router = useRouter()
-  const { user, isAdmin } = useAuth()
+  const { theme, setTheme } = useTheme()
+  const { user, isAdmin, session } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
-
-  const [settings, setSettings] = useState<Settings>({
-    theme: 'light',
-    fontSize: 'medium',
-    dailyCount: 0,
-    lastPublished: '',
-    savedArticles: [],
-    readingHistory: []
-  })
-  const [isPreview, setIsPreview] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
+  const [isPreview, setIsPreview] = useState(false)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [mediaType, setMediaType] = useState<MediaType>('article')
+  const [settings, setSettings] = useState<Settings>(getSettings())
+  const [uploadError, setUploadError] = useState<string>('')
+  const [uploadProgress, setUploadProgress] = useState<number>(0)
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null)
   const [publishForm, setPublishForm] = useState({
     headline: '',
     content: '',
-    author: '',
     category: '',
     description: '',
-    duration: 0,
-    fileSize: 0,
-    fileName: ''
+    tags: [] as string[],
+    author: user?.user_metadata?.full_name || 'Anonymous',
+    duration: 0
   })
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploadError, setUploadError] = useState('')
 
   useEffect(() => {
-    const loadedSettings = getSettings()
-    setSettings(loadedSettings)
+    setSettings(getSettings())
   }, [])
 
-  useEffect(() => {
-    saveSettings(settings)
-    if (settings.theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [settings])
-
-  const { count, remaining } = getPublishingCount()
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: MediaType) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    // Validate file type
-    const allowedTypes = type === 'video' ? MEDIA_CONFIG.allowedVideoTypes :
-      type === 'podcast' ? MEDIA_CONFIG.allowedAudioTypes :
-        MEDIA_CONFIG.allowedImageTypes
-
-    const fileExtension = file.name.split('.').pop()?.toLowerCase()
-    if (!fileExtension || !allowedTypes.includes(fileExtension)) {
-      setUploadError(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`)
-      toast.error(`Invalid file type`)
-      return
-    }
-
-    // Validate file size
-    if (file.size > MEDIA_CONFIG.maxFileSize) {
-      setUploadError(`File too large. Maximum size: ${formatFileSize(MEDIA_CONFIG.maxFileSize)}`)
-      toast.error('File too large')
-      return
-    }
-
-    setUploadedFile(file)
-    setPublishForm({
-      ...publishForm,
-      fileSize: file.size,
-      fileName: file.name
-    })
-    setUploadError('')
-
-    // Simulate upload progress
-    setUploadProgress(0)
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval)
-          return 100
-        }
-        return prev + 10
-      })
-    }, 100)
-    toast.success('File uploaded successfully')
-  }
-
   const handlePublish = async () => {
-    // Admins bypass publishing limits
-    if (!isAdmin && !canPublish()) {
-      toast.error('Daily limit reached. Try again tomorrow.')
-      return
-    }
-
-    if (!publishForm.headline || !publishForm.content || !publishForm.category) {
-      toast.error('Please fill in all required fields.')
-      return
-    }
-
-    if ((mediaType === 'video' || mediaType === 'podcast') && !uploadedFile) {
-      toast.error('Please upload a media file.')
-      return
-    }
-
-    setIsPublishing(true)
-
     try {
-      let videoUrl: string | null = null
-      let audioUrl: string | null = null
-      let thumbnailUrl: string | null = null
+      setIsPublishing(true)
 
-      if (mediaType === 'video' && uploadedFile) {
-        videoUrl = URL.createObjectURL(uploadedFile)
-        thumbnailUrl = publishForm.description || `https://images.unsplash.com/photo-1492619375914-88005aa9e8fb?w=800`
-      } else if (mediaType === 'podcast' && uploadedFile) {
-        audioUrl = URL.createObjectURL(uploadedFile)
-        thumbnailUrl = publishForm.description || `https://images.unsplash.com/photo-1478737184215-538159621ad6?w=800`
+      if (!publishForm.headline || !publishForm.content) {
+        toast.error('Please enter a headline and content')
+        setIsPublishing(false)
+        return
       }
 
-      // Prepare content data
-      const contentData: any = {
+      const contentData = {
         headline: publishForm.headline,
         content: publishForm.content,
-        author: user?.user_metadata?.name || publishForm.author || 'Anonymous',
+        author: publishForm.author,
         category: publishForm.category,
-        media_type: mediaType,
-        thumbnail_url: thumbnailUrl,
-        video_url: videoUrl,
-        audio_url: audioUrl,
-        is_ai: false,
-        user_id: user?.id || 'anonymous',
+        mediaType: mediaType,
+        description: publishForm.description,
+        isAI: false,
+        tags: publishForm.tags,
+        image: mediaType === 'article' ? publishForm.description : undefined,
+        // For video/podcast, use the uploaded mediaUrl if available, otherwise fallback to description field which might contain an external URL
+        coverImageUrl: mediaType === 'podcast' ? publishForm.description : undefined, // Note: This might need a separate field for cover art vs audio file
+        duration: publishForm.duration,
+        videoUrl: mediaType === 'video' ? (mediaUrl || publishForm.description) : undefined,
+        audioUrl: mediaType === 'podcast' ? (mediaUrl || publishForm.description) : undefined,
       }
-
-      // Add media-specific fields
-      if (mediaType === 'article') {
-        contentData.image = publishForm.description || `https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800`
-      } else if (mediaType === 'video' && uploadedFile) {
-        contentData.image = publishForm.description || `https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800`
-        contentData.videoUrl = URL.createObjectURL(uploadedFile)
-        contentData.thumbnailUrl = publishForm.description || `https://images.unsplash.com/photo-1492619375914-88005aa9e8fb?w=800`
-        contentData.duration = publishForm.duration || 300
-        contentData.resolution = '1080p'
-        contentData.fileSize = formatFileSize(uploadedFile.size)
-        contentData.description = publishForm.description
-      } else if (mediaType === 'podcast' && uploadedFile) {
-        contentData.audioUrl = URL.createObjectURL(uploadedFile)
-        contentData.coverImageUrl = publishForm.description || `https://images.unsplash.com/photo-1478737184215-538159621ad6?w=800`
-        contentData.duration = publishForm.duration || 1800
-        contentData.fileSize = formatFileSize(uploadedFile.size)
-        contentData.description = publishForm.description
-        contentData.transcript = publishForm.content
-      }
-
       // Save to database via API
       const response = await fetch('/api/content', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
         body: JSON.stringify(contentData)
       })
 
@@ -279,16 +182,19 @@ export default function PublishPage() {
       }
 
       setIsPublishing(false)
-      toast.success(`🎉 You have published your ${getMediaTypeName(mediaType).toLowerCase()}!`)
+      toast.success(`🎉 Published Successfully! Your ${getMediaTypeName(mediaType).toLowerCase()} is now live.`, {
+        description: 'Redirecting you to view it now...',
+        duration: 4000,
+      })
 
       // Redirect to the new content
       setTimeout(() => {
         if (mediaType === 'video') {
-          router.push(`/video/${newContent.content.id}`)
+          router.push(`/video/${newContent.id}`)
         } else if (mediaType === 'podcast') {
-          router.push(`/podcast/${newContent.content.id}`)
+          router.push(`/podcast/${newContent.id}`)
         } else {
-          router.push(`/article/${newContent.content.id}`)
+          router.push(`/article/${newContent.id}`)
         }
       }, 1000)
     } catch (error) {
@@ -298,19 +204,110 @@ export default function PublishPage() {
     }
   }
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: MediaType) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setUploadError('')
+    setUploadProgress(0)
+
+    try {
+      // Validate file size
+      if (file.size > MEDIA_CONFIG.maxFileSize) {
+        throw new Error(`File size too large. Max size is ${formatFileSize(MEDIA_CONFIG.maxFileSize)}`)
+      }
+
+      // Validate file type
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || ''
+      const allowedTypes = type === 'video'
+        ? MEDIA_CONFIG.allowedVideoTypes
+        : MEDIA_CONFIG.allowedAudioTypes
+
+      if (!allowedTypes.includes(fileExt)) {
+        throw new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`)
+      }
+
+      setUploadedFile(file)
+
+      // Upload to Supabase Storage using Signed URL (to bypass generic RLS)
+      const fileName = `${user?.id || 'anonymous'}/${Date.now()}-${file.name}`
+
+      // 1. Get Signed URL from our API
+      const signResponse = await fetch('/api/storage/sign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ path: fileName })
+      })
+
+      if (!signResponse.ok) {
+        const errorData = await signResponse.json()
+        throw new Error(errorData.error || 'Failed to get upload permissions')
+      }
+
+      const { token, signedUrl, path } = await signResponse.json()
+
+      // 2. Upload using the token
+      const { data, error } = await supabase.storage
+        .from('media')
+        .uploadToSignedUrl(path, token, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (error) throw error
+
+      // Get Public URL (works if bucket is public, which it should be)
+      const { data: { publicUrl } } = supabase.storage
+        .from('media')
+        .getPublicUrl(fileName)
+
+      setMediaUrl(publicUrl)
+      // Auto-fill description/URL field for convenience
+      setPublishForm(prev => ({ ...prev, description: publicUrl }))
+      setUploadProgress(100)
+      toast.success('File uploaded successfully')
+
+    } catch (error) {
+      console.error('Upload error:', error)
+      setUploadError(error instanceof Error ? error.message : 'Upload failed')
+      setUploadedFile(null)
+    }
+  }
+
   const handleAISuggest = () => {
-    const aiArticle = aiGenerator.generateArticle(publishForm.category || 'random')
-    setPublishForm({
-      ...publishForm,
-      headline: aiArticle.headline,
-      content: aiArticle.content
+    if (mediaType === 'video') {
+      const aiVideo = aiGenerator.generateVideoContent(publishForm.category || 'random')
+      setPublishForm(prev => ({
+        ...prev,
+        headline: aiVideo.headline,
+        content: aiVideo.content,
+        description: aiVideo.videoUrl // For external videos/YouTube, we use the description field
+      }))
+      // We don't set mediaUrl because that's for uploaded files
+      setMediaUrl(null)
+    } else {
+      const aiArticle = aiGenerator.generateArticle(publishForm.category || 'random')
+      setPublishForm(prev => ({
+        ...prev,
+        headline: aiArticle.headline,
+        content: aiArticle.content
+      }))
+    }
+    toast.success('AI Content Generated Successfully!', {
+      description: 'The content has been automatically filled for you.',
     })
-    toast.success('AI suggestions applied')
   }
 
   const wordCount = publishForm.content.split(/\s+/).filter(word => word.length > 0).length
   const estimatedReadTime = calculateReadTime(publishForm.content)
   const isValidForm = publishForm.headline && publishForm.content && publishForm.category && canPublish()
+
+  const today = new Date().toDateString()
+  const remaining = settings.lastPublished !== today ? 3 : Math.max(0, 3 - settings.dailyCount)
+  const count = settings.lastPublished !== today ? 0 : settings.dailyCount
 
   const getMediaIcon = (type: MediaType) => {
     switch (type) {
@@ -338,7 +335,7 @@ export default function PublishPage() {
 
   if (isPreview) {
     return (
-      <div className={`min-h-screen ${settings.theme === 'dark' ? 'dark' : ''} bg-background`}>
+      <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-white/70 dark:bg-black/70 backdrop-blur-md border-b border-white/20 dark:border-white/10">
           <div className="container mx-auto px-4">
@@ -362,11 +359,11 @@ export default function PublishPage() {
               <div className="flex items-center space-x-4">
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="rounded-full"
-                  onClick={() => setSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}
+                  size="sm"
+                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                  className="text-black hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
                 >
-                  {settings.theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                  {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                 </Button>
 
                 <Button
@@ -462,7 +459,7 @@ export default function PublishPage() {
   }
 
   return (
-    <div className={`min-h-screen ${settings.theme === 'dark' ? 'dark' : ''} bg-background`}>
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/70 dark:bg-black/70 backdrop-blur-md border-b border-white/20 dark:border-white/10 transition-all duration-300">
         <div className="container mx-auto px-4">
@@ -491,9 +488,9 @@ export default function PublishPage() {
                 variant="ghost"
                 size="icon"
                 className="rounded-full"
-                onClick={() => setSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}
+                onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
               >
-                {settings.theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
               </Button>
 
               <Button
@@ -660,10 +657,10 @@ export default function PublishPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-green-700 dark:text-green-300">
-                            {uploadedFile.name}
+                            {uploadedFile?.name}
                           </p>
                           <p className="text-xs text-green-600">
-                            {formatFileSize(uploadedFile.size)}
+                            {uploadedFile ? formatFileSize(uploadedFile.size) : '0 Bytes'}
                           </p>
                         </div>
                       </div>

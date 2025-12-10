@@ -1,71 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { requireAdmin } from '@/lib/auth-middleware'
+import { logger } from '@/lib/logger'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // Get authorization header
-        const authHeader = request.headers.get('authorization')
-        if (!authHeader) {
-            return NextResponse.json({ error: 'No authorization header' }, { status: 401 })
+        const { id } = await params
+        const authResult = await requireAdmin(request)
+        if (!authResult.authenticated) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            )
         }
 
-        // Verify the user is an admin
-        const token = authHeader.replace('Bearer ', '')
-        const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
-
-        if (authError || !user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-
-        // Check if user is admin
-        const isAdmin = user.user_metadata?.role === 'admin'
-        if (!isAdmin) {
-            return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 })
-        }
-
-        // Get request body
         const body = await request.json()
-        const { banned } = body
+        const { banned, banReason } = body
 
-        const userId = params.id
+        // If banned is true, ban for 100 years. If false, remove ban.
+        const banDuration = banned ? '876600h' : 'none'
 
-        // Update user ban status
-        if (banned) {
-            // Ban user for 100 years (effectively permanent)
-            const banUntil = new Date()
-            banUntil.setFullYear(banUntil.getFullYear() + 100)
+        // Update user: Set ban duration AND update metadata with reason (if banning) or clear it (if unbanning)
+        const updateData: any = { ban_duration: banDuration }
 
-            const { error: banError } = await supabaseAdmin.auth.admin.updateUserById(
-                userId,
-                { ban_duration: '876000h' } // 100 years in hours
-            )
-
-            if (banError) {
-                console.error('Error banning user:', banError)
-                return NextResponse.json({ error: 'Failed to ban user' }, { status: 500 })
-            }
-        } else {
-            // Unban user
-            const { error: unbanError } = await supabaseAdmin.auth.admin.updateUserById(
-                userId,
-                { ban_duration: 'none' }
-            )
-
-            if (unbanError) {
-                console.error('Error unbanning user:', unbanError)
-                return NextResponse.json({ error: 'Failed to unban user' }, { status: 500 })
-            }
+        if (banned && banReason) {
+            updateData.user_metadata = { ban_reason: banReason }
+        } else if (!banned) {
+            // Optional: Clear ban reason when unbanning. 
+            // Note: Supabase merge metadata by default, so we might need to set it to null explicitly if we want to remove it.
+            updateData.user_metadata = { ban_reason: null }
         }
+
+        const { data: user, error } = await supabaseAdmin.auth.admin.updateUserById(
+            id,
+            updateData
+        )
+
+        if (error) {
+            throw error
+        }
+
+        logger.info(`User ${id} ban status updated to ${banned}`)
 
         return NextResponse.json({
             success: true,
-            message: banned ? 'User banned successfully' : 'User unbanned successfully'
-        }, { status: 200 })
+            user: {
+                id: user.user.id,
+                banned: banned
+            }
+        })
     } catch (error) {
-        console.error('Error in POST /api/admin/users/[id]/ban:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        logger.error('Error updating ban status', error as Error)
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        )
     }
 }

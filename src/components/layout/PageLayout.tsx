@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Moon, Sun, ArrowLeft, Brain } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { UserProfile } from '@/components/auth/UserProfile'
 
@@ -14,33 +15,23 @@ interface PageLayoutProps {
 
 export function PageLayout({ children, showBackButton = false, title }: PageLayoutProps) {
     const router = useRouter()
-    const [theme, setTheme] = useState<'light' | 'dark'>('light')
+    const { theme, setTheme } = useTheme()
+    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
-        // Load theme from localStorage
-        const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null
-        if (savedTheme) {
-            setTheme(savedTheme)
-            if (savedTheme === 'dark') {
-                document.documentElement.classList.add('dark')
-            }
-        }
+        setMounted(true)
     }, [])
 
     const toggleTheme = () => {
-        const newTheme = theme === 'light' ? 'dark' : 'light'
-        setTheme(newTheme)
-        localStorage.setItem('theme', newTheme)
+        setTheme(theme === 'light' ? 'dark' : 'light')
+    }
 
-        if (newTheme === 'dark') {
-            document.documentElement.classList.add('dark')
-        } else {
-            document.documentElement.classList.remove('dark')
-        }
+    if (!mounted) {
+        return null
     }
 
     return (
-        <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} bg-background`}>
+        <div className="min-h-screen bg-background">
             {/* Mobile-Responsive Header */}
             <header className="sticky top-0 z-50 glass border-b border-border/40">
                 <div className="container mx-auto px-3 sm:px-4">

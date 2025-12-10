@@ -1,10 +1,10 @@
-import { 
-  Globe, 
-  User, 
-  Zap, 
-  TrendingUp, 
-  BookOpen, 
-  MessageSquare 
+import {
+  Globe,
+  User,
+  Zap,
+  TrendingUp,
+  BookOpen,
+  MessageSquare
 } from 'lucide-react'
 
 // Enhanced Content Models for Meridian Post
@@ -14,6 +14,7 @@ export type MediaType = 'article' | 'video' | 'podcast'
 
 export interface BaseContent {
   id: string
+  userId: string
   headline: string
   content: string
   author: string
@@ -69,7 +70,6 @@ export interface Comment {
 }
 
 export interface Settings {
-  theme: 'light' | 'dark'
   fontSize: 'small' | 'medium' | 'large'
   dailyCount: number
   lastPublished: string
@@ -131,15 +131,15 @@ export const formatDate = (dateString: string): string => {
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const hours = Math.floor(diff / 3600000)
-  
+
   if (hours < 1) {
     const minutes = Math.floor(diff / 60000)
     return `${minutes} minutes ago`
   } else if (hours < 24) {
     return `${hours} hour${hours > 1 ? 's' : ''} ago`
   } else {
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
       year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
     })
@@ -148,21 +148,21 @@ export const formatDate = (dateString: string): string => {
 
 export const formatFullDate = (dateString: string): string => {
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { 
+  return date.toLocaleDateString('en-US', {
     weekday: 'long',
-    year: 'numeric', 
-    month: 'long', 
+    year: 'numeric',
+    month: 'long',
     day: 'numeric'
   })
 }
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes'
-  
+
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
@@ -205,54 +205,85 @@ export const getContentStorageKey = (mediaType: MediaType): string => {
 
 export const getAllContent = (): Content[] => {
   if (typeof window === 'undefined') return []
-  
+
   const articles = JSON.parse(localStorage.getItem('meridianArticles') || '[]')
   const videos = JSON.parse(localStorage.getItem('meridianVideos') || '[]')
   const podcasts = JSON.parse(localStorage.getItem('meridianPodcasts') || '[]')
-  
+
   return [...articles, ...videos, ...podcasts]
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
 }
 
 export const saveContent = (content: Content): void => {
   if (typeof window === 'undefined') return
-  
+
   const storageKey = getContentStorageKey(content.mediaType)
   const existingContent = JSON.parse(localStorage.getItem(storageKey) || '[]')
-  
+
   const updatedContent = existingContent.some((item: Content) => item.id === content.id)
     ? existingContent.map((item: Content) => item.id === content.id ? content : item)
     : [...existingContent, content]
-  
+
   localStorage.setItem(storageKey, JSON.stringify(updatedContent))
 }
 
 export const deleteContent = (contentId: string, mediaType: MediaType): void => {
   if (typeof window === 'undefined') return
-  
+
   const storageKey = getContentStorageKey(mediaType)
   const existingContent = JSON.parse(localStorage.getItem(storageKey) || '[]')
-  
+
   const updatedContent = existingContent.filter((item: Content) => item.id !== contentId)
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
   localStorage.setItem(storageKey, JSON.stringify(updatedContent))
 }
 
-export const canEditVideo = (video: Video): boolean => {
+export const canEditVideo = (video: Video, user?: { id: string, role?: string } | null): boolean => {
+  // Admin bypass
+  if (user?.role === 'admin' || (user as any)?.user_metadata?.role === 'admin') return true
+
+  // Owner check
+  if (user && user.id === video.userId) return true
+
+  // Legacy deviceId check (fallback for guests or if no user is provided)
   const deviceId = getDeviceId()
   const publishedAt = new Date(video.publishedAt)
   const now = new Date()
   const hoursDiff = (now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60)
-  
-  return video.deviceId === deviceId && hoursDiff <= 24
+
+  return !user && video.deviceId === deviceId && hoursDiff <= 24
 }
 
-export const canEditPodcast = (podcast: Podcast): boolean => {
+export const canEditPodcast = (podcast: Podcast, user?: { id: string, role?: string } | null): boolean => {
+  // Admin bypass
+  if (user?.role === 'admin' || (user as any)?.user_metadata?.role === 'admin') return true
+
+  // Owner check
+  if (user && user.id === podcast.userId) return true
+
+  // Legacy deviceId check
   const deviceId = getDeviceId()
   const publishedAt = new Date(podcast.publishedAt)
   const now = new Date()
   const hoursDiff = (now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60)
-  
-  return podcast.deviceId === deviceId && hoursDiff <= 24
+
+  return !user && podcast.deviceId === deviceId && hoursDiff <= 24
+}
+
+export const canEditArticle = (article: Article, user?: { id: string, role?: string } | null): boolean => {
+  // Admin bypass
+  if (user?.role === 'admin' || (user as any)?.user_metadata?.role === 'admin') return true
+
+  // Owner check
+  if (user && user.id === article.userId) return true
+
+  // Legacy deviceId check
+  const deviceId = getDeviceId()
+  const publishedAt = new Date(article.publishedAt)
+  const now = new Date()
+  const hoursDiff = (now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60)
+
+  return !user && article.deviceId === deviceId && hoursDiff <= 24
 }
 
 export const getContentById = (contentId: string): Content | null => {
@@ -262,7 +293,7 @@ export const getContentById = (contentId: string): Content | null => {
 
 const getDeviceId = (): string => {
   if (typeof window === 'undefined') return 'default-device-id'
-  
+
   let deviceId = localStorage.getItem('meridianDeviceId')
   if (!deviceId) {
     deviceId = Math.random().toString(36).substr(2, 9) + Date.now().toString(36)
