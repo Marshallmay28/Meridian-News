@@ -485,12 +485,12 @@ export default function Home() {
           <div className="lg:col-span-8 space-y-12">
 
             {/* Featured Story */}
-            {latestContent.length > 0 && selectedCategory === 'all' && !searchQuery && (
+            {latestContent.length > 0 && (
               <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
-                className="relative group cursor-pointer"
+                className="relative rounded-2xl overflow-hidden mb-12 shadow-2xl group cursor-pointer"
                 onClick={() => router.push(getContentLink(latestContent[0]))}
               >
                 <div className="aspect-[2/1] rounded-3xl overflow-hidden relative shadow-2xl">
