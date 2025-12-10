@@ -674,18 +674,18 @@ export default function Home() {
             <div>
               <h4 className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Platform</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-blue-600 transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-blue-600 transition-colors">Careers</a></li>
-                <li><a href="#" className="hover:text-blue-600 transition-colors">Press</a></li>
+                <li><a href="/about" className="hover:text-blue-600 transition-colors">About Us</a></li>
+                <li><a href="/contact" className="hover:text-blue-600 transition-colors">Contact</a></li>
+                <li><a href="/privacy" className="hover:text-blue-600 transition-colors">Privacy</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold mb-4 text-sm uppercase tracking-wider text-muted-foreground">Community</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-blue-600 transition-colors">Guidelines</a></li>
-                <li><a href="#" className="hover:text-blue-600 transition-colors">Publishing</a></li>
-                <li><a href="#" className="hover:text-blue-600 transition-colors">Support</a></li>
+                <li><a href="/publish" className="hover:text-blue-600 transition-colors">Publishing</a></li>
+                <li><a href="/ai-lab" className="hover:text-blue-600 transition-colors">AI Lab</a></li>
+                <li><a href="/contact" className="hover:text-blue-600 transition-colors">Support</a></li>
               </ul>
             </div>
 
