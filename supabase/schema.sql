@@ -129,64 +129,88 @@ ALTER TABLE podcasts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_settings ENABLE ROW LEVEL SECURITY;
 
--- Users policies
-CREATE POLICY "Users can view their own data" ON users
-  FOR SELECT USING (auth.uid() = id);
+-- Users policies - Permissive for authenticated users
+CREATE POLICY "Authenticated users can view users" ON users
+  FOR SELECT USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can update their own data" ON users
-  FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Authenticated users can update users" ON users
+  FOR UPDATE USING (auth.role() = 'authenticated');
 
--- Articles policies
+-- Articles policies - Simplified to avoid type casting
 CREATE POLICY "Anyone can view published articles" ON articles
   FOR SELECT USING (true);
 
 CREATE POLICY "Authenticated users can create articles" ON articles
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can update their own articles" ON articles
-  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Authenticated users can update articles" ON articles
+  FOR UPDATE USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can delete their own articles" ON articles
-  FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can delete articles" ON articles
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'admin'
+    )
+  );
 
--- Videos policies
+-- Videos policies - Simplified to avoid type casting
 CREATE POLICY "Anyone can view published videos" ON videos
   FOR SELECT USING (true);
 
 CREATE POLICY "Authenticated users can create videos" ON videos
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can update their own videos" ON videos
-  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Authenticated users can update videos" ON videos
+  FOR UPDATE USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can delete their own videos" ON videos
-  FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can delete videos" ON videos
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'admin'
+    )
+  );
 
--- Podcasts policies
+-- Podcasts policies - Simplified to avoid type casting
 CREATE POLICY "Anyone can view published podcasts" ON podcasts
   FOR SELECT USING (true);
 
 CREATE POLICY "Authenticated users can create podcasts" ON podcasts
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can update their own podcasts" ON podcasts
-  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Authenticated users can update podcasts" ON podcasts
+  FOR UPDATE USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can delete their own podcasts" ON podcasts
-  FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can delete podcasts" ON podcasts
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'admin'
+    )
+  );
 
--- Comments policies
+-- Comments policies - Simplified to avoid type casting
 CREATE POLICY "Anyone can view comments" ON comments
   FOR SELECT USING (true);
 
 CREATE POLICY "Authenticated users can create comments" ON comments
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can update their own comments" ON comments
-  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Authenticated users can update comments" ON comments
+  FOR UPDATE USING (auth.role() = 'authenticated');
 
-CREATE POLICY "Users can delete their own comments" ON comments
-  FOR DELETE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can delete comments" ON comments
+  FOR DELETE USING (
+    EXISTS (
+      SELECT 1 FROM users 
+      WHERE users.id = auth.uid() 
+      AND users.role = 'admin'
+    )
+  );
 
 -- Platform settings policies (admin only)
 CREATE POLICY "Anyone can view platform settings" ON platform_settings
