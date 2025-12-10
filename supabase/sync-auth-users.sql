@@ -5,10 +5,11 @@
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.users (id, email, name, role)
+  INSERT INTO public.users (id, email, password_hash, name, role)
   VALUES (
     NEW.id,
     NEW.email,
+    'supabase_auth', -- Placeholder since Supabase Auth manages passwords
     COALESCE(NEW.raw_user_meta_data->>'name', 'User'),
     COALESCE(NEW.raw_user_meta_data->>'role', 'user')
   )
@@ -24,10 +25,11 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Backfill existing auth users into the users table
-INSERT INTO public.users (id, email, name, role)
+INSERT INTO public.users (id, email, password_hash, name, role)
 SELECT 
   id,
   email,
+  'supabase_auth', -- Placeholder since Supabase Auth manages passwords
   COALESCE(raw_user_meta_data->>'name', 'User') as name,
   COALESCE(raw_user_meta_data->>'role', 'user') as role
 FROM auth.users

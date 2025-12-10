@@ -744,3 +744,6 @@ Error: Route "/api/content/[id]" used `params.id`. `params` is a Promise and mus
 [2025-12-10T16:38:03.562Z] [WARN] Unauthorized access attempt
  POST /api/content 401 in 391ms (compile: 326ms, proxy.ts: 15ms, render: 50ms)
  ✓ Compiled in 281ms
+[2025-12-10T16:40:56.428Z] [WARN] Unauthorized access attempt
+ POST /api/content 401 in 227ms (compile: 60ms, proxy.ts: 94ms, render: 74ms)
+ ✓ Compiled in 1084ms
