@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { getToken } from 'next-auth/jwt'
+import { supabase } from '@/lib/supabase'
+import { transformContent, type DbContent } from '@/lib/content-transformer'
+import { requireAdmin } from '@/lib/auth-middleware'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 export async function GET(
     request: NextRequest,
@@ -37,38 +34,15 @@ export async function GET(
             .update({ views: (content.views || 0) + 1 })
             .eq('id', id)
 
-        // Transform snake_case to camelCase for frontend
-        const transformedContent = {
-            id: content.id,
-            userId: content.user_id,
-            headline: content.headline,
-            content: content.content,
-            author: content.author,
-            category: content.category,
-            mediaType: content.media_type,
-            publishedAt: content.published_at,
-            views: (content.views || 0) + 1, // Include the incremented view
-            likes: content.likes || 0,
-            readTime: content.read_time,
-            isAI: content.is_ai || false,
-            tags: content.tags || [],
-            image: content.image,
-            videoUrl: content.video_url,
-            thumbnailUrl: content.thumbnail_url,
-            duration: content.duration,
-            resolution: content.resolution,
-            fileSize: content.file_size,
-            audioUrl: content.audio_url,
-            coverImageUrl: content.cover_image_url,
-            episodeNumber: content.episode_number,
-            seasonNumber: content.season_number,
-            transcript: content.transcript,
-            description: content.description
-        }
+        // Transform using shared utility
+        const transformedContent = transformContent({
+            ...content,
+            views: (content.views || 0) + 1
+        } as DbContent)
 
         return NextResponse.json({ content: transformedContent }, { status: 200 })
     } catch (error) {
-        console.error('Server error:', error)
+        logger.error('Server error in GET /api/content/[id]', error as Error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
@@ -81,12 +55,12 @@ export async function DELETE(
     { params }: { params: { id: string } }
 ) {
     try {
-        // Check authentication and admin role
-        const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+        // Require admin authentication
+        const authResult = await requireAdmin(request)
 
-        if (!token || token.role !== 'admin') {
+        if (!authResult.authenticated) {
             return NextResponse.json(
-                { error: 'Unauthorized - Admin access required' },
+                { error: authResult.error || 'Unauthorized - Admin access required' },
                 { status: 403 }
             )
         }
@@ -100,21 +74,24 @@ export async function DELETE(
             .eq('id', id)
 
         if (error) {
-            console.error('Delete error:', error)
+            logger.error('Delete error', error as Error)
             return NextResponse.json(
                 { error: 'Failed to delete content' },
                 { status: 500 }
             )
         }
 
-        console.log(`Content deleted successfully: ${id}`)
+        logger.info('Content deleted successfully', {
+            contentId: id,
+            adminId: authResult.user?.id
+        })
 
         return NextResponse.json(
             { message: 'Content deleted successfully', deletedId: id },
             { status: 200 }
         )
     } catch (error) {
-        console.error('Server error:', error)
+        logger.error('Server error in DELETE /api/content/[id]', error as Error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }

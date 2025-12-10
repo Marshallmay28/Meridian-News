@@ -1,23 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { getToken } from 'next-auth/jwt'
+import { supabase } from '@/lib/supabase'
+import { transformContentArray, type DbContent } from '@/lib/content-transformer'
+import { requireAuth } from '@/lib/auth-middleware'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 // POST - Create new content
 export async function POST(request: NextRequest) {
     try {
-        // Get user from session (optional for migration)
-        const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
-        const userId = token?.sub || 'anonymous'
+        // Require authentication for content creation
+        const authResult = await requireAuth(request)
 
+        if (!authResult.authenticated) {
+            return NextResponse.json(
+                { error: authResult.error || 'Authentication required' },
+                { status: 401 }
+            )
+        }
+
+        const userId = authResult.user?.id || 'anonymous'
         const body = await request.json()
+
         const {
             headline,
             content,
@@ -79,19 +84,21 @@ export async function POST(request: NextRequest) {
             .single()
 
         if (error) {
-            console.error('Database error:', error)
+            logger.error('Database error creating content', error as Error)
             return NextResponse.json(
                 { error: 'Failed to create content' },
                 { status: 500 }
             )
         }
 
+        logger.info('Content created successfully', { contentId: data.id, userId })
+
         return NextResponse.json(
             { message: 'Content published successfully', content: data },
             { status: 201 }
         )
     } catch (error) {
-        console.error('Server error:', error)
+        logger.error('Server error in POST /api/content', error as Error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
@@ -125,49 +132,22 @@ export async function GET(request: NextRequest) {
         const { data, error } = await query
 
         if (error) {
-            console.error('Database error:', error)
+            logger.error('Database error fetching content', error as Error)
             return NextResponse.json(
                 { error: 'Failed to fetch content' },
                 { status: 500 }
             )
         }
 
-        // Transform snake_case to camelCase for frontend
-        const transformedData = data?.map((item: any) => ({
-            id: item.id,
-            userId: item.user_id,
-            headline: item.headline,
-            content: item.content,
-            author: item.author,
-            category: item.category,
-            mediaType: item.media_type,
-            publishedAt: item.published_at,
-            views: item.views || 0,
-            likes: item.likes || 0,
-            readTime: item.read_time,
-            isAI: item.is_ai || false,
-            tags: item.tags || [],
-            image: item.image,
-            videoUrl: item.video_url,
-            thumbnailUrl: item.thumbnail_url,
-            duration: item.duration,
-            resolution: item.resolution,
-            fileSize: item.file_size,
-            audioUrl: item.audio_url,
-            coverImageUrl: item.cover_image_url,
-            episodeNumber: item.episode_number,
-            seasonNumber: item.season_number,
-            transcript: item.transcript,
-            description: item.description
-        })) || []
+        // Transform data using shared utility
+        const transformedData = transformContentArray(data as DbContent[])
 
         return NextResponse.json({ content: transformedData }, { status: 200 })
     } catch (error) {
-        console.error('Server error:', error)
+        logger.error('Server error in GET /api/content', error as Error)
         return NextResponse.json(
             { error: 'Internal server error' },
             { status: 500 }
         )
     }
 }
-

@@ -5,18 +5,11 @@
 
  ✓ Starting...
  ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
- ✓ Ready in 2.9s
+ ✓ Ready in 6.1s
  ○ Compiling /_not-found/page ...
- GET /@vite/client 404 in 7.3s (compile: 5.9s, render: 1311ms)
- GET /@react-refresh 404 in 7.3s (compile: 6.8s, render: 454ms)
- GET /index.tsx?t=1765238631278 404 in 7.3s (compile: 6.7s, render: 572ms)
- GET /@vite/client 404 in 514ms (compile: 44ms, render: 470ms)
- GET /index.tsx?t=1765238631278 404 in 518ms (compile: 214ms, render: 304ms)
- GET /@react-refresh 404 in 524ms (compile: 393ms, render: 130ms)
- GET /vite.svg 404 in 348ms (compile: 25ms, render: 323ms)
- GET /sw.js 404 in 222ms (compile: 14ms, render: 208ms)
- GET /index.tsx?t=1765238631278 404 in 626ms (compile: 19ms, render: 607ms)
- GET /@vite/client 404 in 637ms (compile: 163ms, render: 474ms)
- GET /@react-refresh 404 in 295ms (compile: 25ms, render: 270ms)
- GET /vite.svg 404 in 264ms (compile: 15ms, render: 248ms)
- GET /sw.js 404 in 277ms (compile: 34ms, render: 243ms)
+ GET /index.tsx?t=1765238631278 404 in 13.1s (compile: 12.0s, render: 1071ms)
+ GET /@react-refresh 404 in 12.9s (compile: 11.5s, render: 1421ms)
+ GET /@vite/client 404 in 13.1s (compile: 12.8s, render: 304ms)
+ GET /vite.svg 404 in 323ms (compile: 21ms, render: 301ms)
+ GET /sw.js 404 in 199ms (compile: 13ms, render: 186ms)
+ GET /sw.js 404 in 426ms (compile: 35ms, render: 390ms)

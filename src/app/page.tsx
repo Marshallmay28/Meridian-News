@@ -111,11 +111,9 @@ export default function Home() {
           const data = await response.json()
           setContent(data.content || [])
         } else {
-          console.error('Failed to load content from database')
           setContent([]) // Show empty if database fails
         }
       } catch (error) {
-        console.error('Error loading content:', error)
         setContent([]) // Show empty if error
       }
     }
@@ -574,7 +572,7 @@ export default function Home() {
                       <p className="text-sm text-muted-foreground">Track your content creation</p>
                     </div>
                     <div className="text-right">
-                      {(session?.user as any)?.role === 'admin' ? (
+                      {session?.user?.role === 'admin' ? (
                         <>
                           <div className="text-2xl font-bold text-purple-600">∞</div>
                           <p className="text-xs text-purple-600">Unlimited (Admin)</p>
@@ -590,7 +588,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="space-y-3">
-                    {(session?.user as any)?.role !== 'admin' && (
+                    {session?.user?.role !== 'admin' && (
                       <div className="h-2 bg-secondary rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-purple-500 to-blue-600 transition-all"
@@ -601,9 +599,9 @@ export default function Home() {
                     <Button
                       onClick={() => router.push('/publish')}
                       className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                      disabled={(session?.user as any)?.role !== 'admin' && publishingCount.remaining === 0}
+                      disabled={session?.user?.role !== 'admin' && publishingCount.remaining === 0}
                     >
-                      {(session?.user as any)?.role === 'admin' ? 'Start Writing (Unlimited)' : publishingCount.remaining > 0 ? 'Start Writing' : 'Limit Reached'}
+                      {session?.user?.role === 'admin' ? 'Start Writing (Unlimited)' : publishingCount.remaining > 0 ? 'Start Writing' : 'Limit Reached'}
                     </Button>
                   </div>
                 </div>

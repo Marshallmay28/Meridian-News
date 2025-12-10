@@ -206,11 +206,10 @@ export default function ArticlePage() {
           }
         }
       } catch (error) {
-        console.log('Database fetch failed, trying localStorage:', error)
+        // Database fetch failed, proceed to localStorage fallback
       }
 
       // Fallback to localStorage (always runs if database fails or article not found in API)
-      console.log('Loading from localStorage...')
       const articles = getArticles()
       const foundArticle = articles.find(a => a.id === articleId)
 

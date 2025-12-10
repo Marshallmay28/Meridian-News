@@ -72,7 +72,6 @@ export default function AdminDashboard() {
             }
             setStats(getContentStats())
         } catch (error) {
-            console.error('Failed to load content:', error)
             setContent(getAllContent())
         }
     }
@@ -88,13 +87,11 @@ export default function AdminDashboard() {
 
         // Validate that we have a valid ID
         if (!contentToDelete.id) {
-            console.error('Content ID is missing:', contentToDelete)
             toast.error('Cannot delete: Invalid content ID')
             return
         }
 
         try {
-            console.log('Deleting content with ID:', contentToDelete.id)
             const response = await fetch(`/api/content/${contentToDelete.id}`, {
                 method: 'DELETE'
             })
@@ -112,7 +109,6 @@ export default function AdminDashboard() {
                 toast.error(error.error || 'Failed to delete content')
             }
         } catch (error) {
-            console.error('Delete error:', error)
             toast.error('Failed to delete content')
         }
     }
