@@ -20,7 +20,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 // Server-side client with service role key (for admin operations)
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-export const supabaseAdmin = serviceRoleKey 
+export const supabaseAdmin = serviceRoleKey
     ? createClient(supabaseUrl, serviceRoleKey, {
         auth: {
             autoRefreshToken: false,
