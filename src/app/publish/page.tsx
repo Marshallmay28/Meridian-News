@@ -206,68 +206,76 @@ export default function PublishPage() {
 
     setIsPublishing(true)
 
-    // Simulate publishing delay
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    try {
+      // Prepare content data
+      const contentData: any = {
+        headline: publishForm.headline,
+        content: publishForm.content,
+        author: session?.user?.name || publishForm.author || 'Anonymous',
+        category: publishForm.category,
+        mediaType: mediaType,
+        readTime: calculateReadTime(publishForm.content),
+        isAI: false,
+        tags: [],
+      }
 
-    const newContent: Content = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      headline: publishForm.headline,
-      content: publishForm.content,
-      author: publishForm.author || 'Anonymous Contributor',
-      category: publishForm.category,
-      publishedAt: new Date().toISOString(),
-      views: 0,
-      likes: 0,
-      comments: [],
-      readTime: calculateReadTime(publishForm.content),
-      deviceId: getDeviceId(),
-      mediaType,
-      tags: [],
-      ...(mediaType === 'article' && {
-        image: publishForm.description // Using description field for image URL in articles
-      }),
-      ...(mediaType === 'video' && uploadedFile && {
-        videoUrl: URL.createObjectURL(uploadedFile),
-        thumbnailUrl: publishForm.description || `https://images.unsplash.com/photo-1579546923517-1c35bab8b3a4?w=800`,
-        duration: publishForm.duration || 300,
-        resolution: '1920x1080',
-        fileSize: formatFileSize(uploadedFile.size),
-        description: publishForm.description
-      }),
-      ...(mediaType === 'podcast' && uploadedFile && {
-        audioUrl: URL.createObjectURL(uploadedFile),
-        coverImageUrl: publishForm.description || `https://images.unsplash.com/photo-1478737184215-538159621ad6?w=800`,
-        duration: publishForm.duration || 1800,
-        fileSize: formatFileSize(uploadedFile.size),
-        description: publishForm.description,
-        transcript: publishForm.content
+      // Add media-specific fields
+      if (mediaType === 'article') {
+        contentData.image = publishForm.description || `https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800`
+      } else if (mediaType === 'video' && uploadedFile) {
+        contentData.videoUrl = URL.createObjectURL(uploadedFile)
+        contentData.thumbnailUrl = publishForm.description || `https://images.unsplash.com/photo-1492619375914-88005aa9e8fb?w=800`
+        contentData.duration = publishForm.duration || 300
+        contentData.resolution = '1080p'
+        contentData.fileSize = formatFileSize(uploadedFile.size)
+        contentData.description = publishForm.description
+      } else if (mediaType === 'podcast' && uploadedFile) {
+        contentData.audioUrl = URL.createObjectURL(uploadedFile)
+        contentData.coverImageUrl = publishForm.description || `https://images.unsplash.com/photo-1478737184215-538159621ad6?w=800`
+        contentData.duration = publishForm.duration || 1800
+        contentData.fileSize = formatFileSize(uploadedFile.size)
+        contentData.description = publishForm.description
+        contentData.transcript = publishForm.content
+      }
+
+      // Save to database via API
+      const response = await fetch('/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contentData)
       })
-    } as Content
 
-    saveContent(newContent)
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to publish content')
+      }
 
-    // Update publishing count
-    const today = new Date().toDateString()
-    const currentCount = settings.lastPublished === today ? settings.dailyCount + 1 : 1
-    const updatedSettings = {
-      ...settings,
-      dailyCount: currentCount,
-      lastPublished: today
-    }
-    setSettings(updatedSettings)
-    saveSettings(updatedSettings)
+      const { content: newContent } = await response.json()
 
-    setIsPublishing(false)
-    toast.success(`🎉 You have published your ${getMediaTypeName(mediaType).toLowerCase()}!`)
+      // Update publishing count (only for non-admins)
+      if (!isAdmin) {
+        const today = new Date().toDateString()
+        const currentCount = settings.lastPublished === today ? settings.dailyCount + 1 : 1
+        const updatedSettings = {
+          ...settings,
+          dailyCount: currentCount,
+          lastPublished: today
+        }
+        setSettings(updatedSettings)
+        saveSettings(updatedSettings)
+      }
 
+      setIsPublishing(false)
+      toast.success(`🎉 You have published your ${getMediaTypeName(mediaType).toLowerCase()}!`)
 
-    // Redirect to the new content
-    if (mediaType === 'video') {
-      router.push(`/video/${newContent.id}`)
-    } else if (mediaType === 'podcast') {
-      router.push(`/podcast/${newContent.id}`)
-    } else {
-      router.push(`/article/${newContent.id}`)
+      // Redirect to the new content
+      setTimeout(() => {
+        router.push('/')
+      }, 1000)
+    } catch (error) {
+      console.error('Publish error:', error)
+      setIsPublishing(false)
+      toast.error(error instanceof Error ? error.message : 'Failed to publish content')
     }
   }
 

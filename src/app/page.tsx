@@ -100,7 +100,21 @@ export default function Home() {
   useEffect(() => {
     const loadedSettings = getSettings()
     setSettings(loadedSettings)
-    setContent(getAllContent())
+
+    // Fetch content from database
+    fetch('/api/content')
+      .then(res => res.json())
+      .then(data => {
+        if (data.content) {
+          setContent(data.content)
+        }
+      })
+      .catch(error => {
+        console.error('Failed to load content:', error)
+        // Fallback to localStorage if API fails
+        setContent(getAllContent())
+      })
+
     setPublishingCount(getPublishingCount(loadedSettings))
   }, [])
 
