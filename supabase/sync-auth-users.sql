@@ -9,8 +9,8 @@ BEGIN
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_metadata->>'name', 'User'),
-    COALESCE(NEW.raw_user_metadata->>'role', 'user')
+    COALESCE(NEW.raw_user_meta_data->>'name', 'User'),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'user')
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;
@@ -28,8 +28,8 @@ INSERT INTO public.users (id, email, name, role)
 SELECT 
   id,
   email,
-  COALESCE(raw_user_metadata->>'name', 'User') as name,
-  COALESCE(raw_user_metadata->>'role', 'user') as role
+  COALESCE(raw_user_meta_data->>'name', 'User') as name,
+  COALESCE(raw_user_meta_data->>'role', 'user') as role
 FROM auth.users
 ON CONFLICT (id) DO NOTHING;
 
