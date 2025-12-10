@@ -94,12 +94,10 @@ const formatFileSize = (bytes: number): string => {
 
 export default function PublishPage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
-
-  const isAdmin = (session?.user as any)?.role === 'admin'
 
   const [settings, setSettings] = useState<Settings>({
     theme: 'light',
@@ -207,16 +205,30 @@ export default function PublishPage() {
     setIsPublishing(true)
 
     try {
+      let videoUrl = null
+      let audioUrl = null
+      let thumbnailUrl = null
+
+      if (mediaType === 'video' && uploadedFile) {
+        videoUrl = URL.createObjectURL(uploadedFile)
+        thumbnailUrl = publishForm.description || `https://images.unsplash.com/photo-1492619375914-88005aa9e8fb?w=800`
+      } else if (mediaType === 'podcast' && uploadedFile) {
+        audioUrl = URL.createObjectURL(uploadedFile)
+        thumbnailUrl = publishForm.description || `https://images.unsplash.com/photo-1478737184215-538159621ad6?w=800`
+      }
+
       // Prepare content data
       const contentData: any = {
         headline: publishForm.headline,
         content: publishForm.content,
-        author: session?.user?.name || publishForm.author || 'Anonymous',
         category: publishForm.category,
-        mediaType: mediaType,
-        readTime: calculateReadTime(publishForm.content),
-        isAI: false,
-        tags: [],
+        author: user?.user_metadata?.name || publishForm.author || 'Anonymous',
+        media_type: mediaType,
+        thumbnail_url: thumbnailUrl,
+        video_url: videoUrl,
+        audio_url: audioUrl,
+        is_ai: false,
+        user_id: user?.id || 'anonymous',
       }
 
       // Add media-specific fields

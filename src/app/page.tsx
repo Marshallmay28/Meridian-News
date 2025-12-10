@@ -599,9 +599,9 @@ export default function Home() {
                     <Button
                       onClick={() => router.push('/publish')}
                       className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                      disabled={session?.user?.role !== 'admin' && publishingCount.remaining === 0}
+                      disabled={!isAdmin && publishingCount.remaining === 0}
                     >
-                      {session?.user?.role === 'admin' ? 'Start Writing (Unlimited)' : publishingCount.remaining > 0 ? 'Start Writing' : 'Limit Reached'}
+                      {isAdmin ? 'Start Writing (Unlimited)' : publishingCount.remaining > 0 ? 'Start Writing' : 'Limit Reached'}
                     </Button>
                   </div>
                 </div>
