@@ -1,62 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
-import { supabase } from '@/lib/supabase'
-import { userSchema, validateRequest } from '@/lib/validations'
-import { rateLimit, getClientIp, rateLimitConfigs } from '@/lib/rate-limit'
-import { sanitizeEmail, securityHeaders } from '@/lib/security'
+import { createClient } from '@supabase/supabase-js'
 
-// Ensure this route works on Vercel
+// Vercel-compatible configuration
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// Create Supabase client directly
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function POST(request: NextRequest) {
     try {
-        // Rate limiting
-        const ip = getClientIp(request)
-        const rateLimitResult = rateLimit(`register:${ip}`, rateLimitConfigs.auth)
-
-        if (!rateLimitResult.success) {
-            return NextResponse.json(
-                { error: 'Too many registration attempts. Please try again later.' },
-                {
-                    status: 429,
-                    headers: {
-                        'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-                        'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
-                        'X-RateLimit-Reset': new Date(rateLimitResult.reset).toISOString(),
-                        ...securityHeaders,
-                    }
-                }
-            )
-        }
+        console.log('Registration API called')
 
         const body = await request.json()
+        const { email, password, name } = body
 
-        // Validate request
-        const validationResult = validateRequest(userSchema, body)
-        if (!validationResult.success) {
+        // Basic validation
+        if (!email || !password || !name) {
             return NextResponse.json(
-                { error: validationResult.error },
-                { status: 400, headers: securityHeaders }
+                { error: 'Missing required fields' },
+                { status: 400 }
             )
         }
 
-        const { email, password, name } = validationResult.data
-
-        // Sanitize email
-        const sanitizedEmail = sanitizeEmail(email)
-
-        // Check if user already exists
+        // Check if user exists
         const { data: existingUser } = await supabase
             .from('users')
             .select('id')
-            .eq('email', sanitizedEmail)
+            .eq('email', email.toLowerCase())
             .single()
 
         if (existingUser) {
             return NextResponse.json(
-                { error: 'User with this email already exists' },
-                { status: 409, headers: securityHeaders }
+                { error: 'User already exists' },
+                { status: 409 }
             )
         }
 
@@ -67,7 +48,7 @@ export async function POST(request: NextRequest) {
         const { data: user, error } = await supabase
             .from('users')
             .insert({
-                email: sanitizedEmail,
+                email: email.toLowerCase(),
                 password_hash: passwordHash,
                 name,
                 role: 'user',
@@ -79,7 +60,7 @@ export async function POST(request: NextRequest) {
             console.error('Database error:', error)
             return NextResponse.json(
                 { error: 'Failed to create user' },
-                { status: 500, headers: securityHeaders }
+                { status: 500 }
             )
         }
 
@@ -92,13 +73,25 @@ export async function POST(request: NextRequest) {
                     name: user.name,
                 }
             },
-            { status: 201, headers: securityHeaders }
+            { status: 201 }
         )
     } catch (error) {
         console.error('Server error:', error)
         return NextResponse.json(
             { error: 'Internal server error' },
-            { status: 500, headers: securityHeaders }
+            { status: 500 }
         )
     }
+}
+
+// Add OPTIONS handler for CORS
+export async function OPTIONS(request: NextRequest) {
+    return new NextResponse(null, {
+        status: 200,
+        headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+        },
+    })
 }
