@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
 import { Mail, Lock, User, Eye, EyeOff, Newspaper } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner'
 
 export default function RegisterPage() {
-  const router = useRouter()
+  const { signUp } = useAuth()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,35 +36,12 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      // Register user
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      })
+      const { error } = await signUp(email, password, name)
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        toast.error(data.error || 'Registration failed')
-        return
-      }
-
-      toast.success('Account created! Signing you in...')
-
-      // Auto sign in
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      })
-
-      if (result?.error) {
-        toast.error('Please sign in manually')
-        router.push('/auth/login')
+      if (error) {
+        toast.error(error.message || 'Registration failed')
       } else {
-        router.push('/')
-        router.refresh()
+        toast.success('Account created! Please check your email to verify your account.')
       }
     } catch (error) {
       toast.error('Something went wrong')

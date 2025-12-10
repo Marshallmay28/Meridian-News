@@ -1,8 +1,7 @@
 'use client'
 
-import { SessionProvider } from 'next-auth/react'
-import { ReactNode } from 'react'
+import { AuthProvider as SupabaseAuthProvider } from '@/contexts/auth-context'
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-    return <SessionProvider>{children}</SessionProvider>
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+    return <SupabaseAuthProvider>{children}</SupabaseAuthProvider>
 }

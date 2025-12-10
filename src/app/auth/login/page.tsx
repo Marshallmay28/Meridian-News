@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/auth-context'
 import Link from 'next/link'
 import { Mail, Lock, Eye, EyeOff, Newspaper } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner'
 
 export default function LoginPage() {
-  const router = useRouter()
+  const { signIn } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -23,19 +22,13 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      })
+      const { error } = await signIn(email, password)
 
-      if (result?.error) {
+      if (error) {
         toast.error('Invalid email or password')
       } else {
         const userName = email.split('@')[0]
         toast.success(`Welcome back, ${userName}! 🎉`)
-        router.push('/')
-        router.refresh()
       }
     } catch (error) {
       toast.error('Something went wrong')
