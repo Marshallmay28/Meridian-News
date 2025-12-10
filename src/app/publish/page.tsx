@@ -270,7 +270,13 @@ export default function PublishPage() {
 
       // Redirect to the new content
       setTimeout(() => {
-        router.push('/')
+        if (mediaType === 'video') {
+          router.push(`/video/${newContent.content.id}`)
+        } else if (mediaType === 'podcast') {
+          router.push(`/podcast/${newContent.content.id}`)
+        } else {
+          router.push(`/article/${newContent.content.id}`)
+        }
       }, 1000)
     } catch (error) {
       console.error('Publish error:', error)
