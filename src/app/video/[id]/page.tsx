@@ -26,7 +26,7 @@ const getDeviceId = () => {
 
 const getVideos = (): VideoType[] => {
   if (typeof window === 'undefined') return []
-  
+
   const videos = localStorage.getItem('meridianVideos')
   return videos ? JSON.parse(videos) : []
 }
@@ -40,7 +40,7 @@ const getSettings = (): Settings => {
     savedArticles: [],
     readingHistory: []
   }
-  
+
   const settings = localStorage.getItem('meridianSettings')
   return settings ? JSON.parse(settings) : {
     theme: 'light',
@@ -68,7 +68,7 @@ export default function VideoPage() {
   const params = useParams()
   const router = useRouter()
   const videoId = params.id as string
-  
+
   const [video, setVideo] = useState<VideoType | null>(null)
   const [settings, setSettings] = useState<Settings>({
     theme: 'light',
@@ -100,10 +100,10 @@ export default function VideoPage() {
   useEffect(() => {
     const loadedSettings = getSettings()
     setSettings(loadedSettings)
-    
+
     const videos = getVideos()
     const foundVideo = videos.find(v => v.id === videoId)
-    
+
     if (foundVideo) {
       setVideo(foundVideo)
       setComments(foundVideo.comments)
@@ -116,7 +116,7 @@ export default function VideoPage() {
       })
 
       // Update view count
-      const updatedVideos = videos.map(v => 
+      const updatedVideos = videos.map(v =>
         v.id === videoId ? { ...v, views: v.views + 1 } : v
       )
       saveVideos(updatedVideos)
@@ -145,9 +145,9 @@ export default function VideoPage() {
 
   const handleLike = () => {
     if (!video) return
-    
+
     const videos = getVideos()
-    const updatedVideos = videos.map(v => 
+    const updatedVideos = videos.map(v =>
       v.id === videoId ? { ...v, likes: v.likes + 1 } : v
     )
     saveVideos(updatedVideos)
@@ -156,7 +156,7 @@ export default function VideoPage() {
 
   const handleSaveVideo = () => {
     if (!video) return
-    
+
     const updatedSettings = {
       ...settings,
       savedArticles: settings.savedArticles.includes(videoId)
@@ -182,7 +182,7 @@ export default function VideoPage() {
     setComments(updatedComments)
 
     const videos = getVideos()
-    const updatedVideos = videos.map(v => 
+    const updatedVideos = videos.map(v =>
       v.id === videoId ? { ...v, comments: updatedComments } : v
     )
     saveVideos(updatedVideos)
@@ -195,9 +195,9 @@ export default function VideoPage() {
     if (!video || !canEditVideo(video)) return
 
     const videos = getVideos()
-    const updatedVideos = videos.map(v => 
-      v.id === videoId ? { 
-        ...v, 
+    const updatedVideos = videos.map(v =>
+      v.id === videoId ? {
+        ...v,
         headline: editForm.headline,
         content: editForm.content,
         videoUrl: editForm.videoUrl,
@@ -206,8 +206,8 @@ export default function VideoPage() {
       } : v
     )
     saveVideos(updatedVideos)
-    setVideo({ 
-      ...video, 
+    setVideo({
+      ...video,
       headline: editForm.headline,
       content: editForm.content,
       videoUrl: editForm.videoUrl,
@@ -337,17 +337,18 @@ export default function VideoPage() {
       <div className="bg-white text-black">
         {/* Header */}
         <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-6">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
+            <div className="flex items-center justify-between h-14 sm:h-16">
+              <div className="flex items-center space-x-2 sm:space-x-6">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => router.push('/')}
-                  className="text-black hover:text-blue-600"
+                  className="text-black hover:text-blue-600 text-xs sm:text-sm"
                 >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Home
+                  <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Back to Home</span>
+                  <span className="sm:hidden">Back</span>
                 </Button>
                 <nav className="hidden md:flex items-center space-x-6">
                   <button className="text-sm font-medium text-gray-600 hover:text-black">Videos</button>
@@ -355,21 +356,24 @@ export default function VideoPage() {
                   <button className="text-sm font-medium text-gray-600 hover:text-black">Articles</button>
                 </nav>
               </div>
-              
-              <div className="flex items-center space-x-6">
-                <h1 className="text-2xl font-serif font-bold text-black">The Meridian Post</h1>
+
+              <div className="flex items-center space-x-2 sm:space-x-6">
+                <h1 className="text-lg sm:text-2xl font-serif font-bold text-black">
+                  <span className="hidden sm:inline">The Meridian Post</span>
+                  <span className="sm:hidden">Meridian</span>
+                </h1>
               </div>
 
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 sm:space-x-4">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSettings({...settings, theme: settings.theme === 'light' ? 'dark' : 'light'})}
+                  onClick={() => setSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}
                   className="text-black hover:text-blue-600"
                 >
                   {settings.theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                 </Button>
-                
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -417,14 +421,14 @@ export default function VideoPage() {
         <div className="border-b border-gray-100 bg-gray-50">
           <div className="max-w-4xl mx-auto px-4 py-2">
             <nav className="flex items-center space-x-2 text-sm">
-              <button 
+              <button
                 onClick={() => router.push('/')}
                 className="text-gray-600 hover:text-black"
               >
                 Home
               </button>
               <span className="text-gray-400">/</span>
-              <button 
+              <button
                 onClick={() => router.push(`/?category=${video.category}&mediaType=video`)}
                 className="text-gray-600 hover:text-black capitalize"
               >
@@ -449,7 +453,7 @@ export default function VideoPage() {
                       🎥 Video
                     </Badge>
                   </div>
-                  
+
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold leading-tight mb-4 text-black">
                     {video.headline}
                   </h1>
@@ -462,10 +466,10 @@ export default function VideoPage() {
                       <span>•</span>
                       <span>{formatDuration(video.duration)}</span>
                     </div>
-                    
+
                     <div className="flex items-center space-x-4">
                       <span>{video.views} views</span>
-                      <button 
+                      <button
                         onClick={handleLike}
                         className="flex items-center space-x-1 hover:text-red-600 transition-colors"
                       >
@@ -489,7 +493,7 @@ export default function VideoPage() {
                       onLoadedMetadata={handleLoadedMetadata}
                       controls={false}
                     />
-                    
+
                     {/* Custom Controls */}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
                       {/* Progress Bar */}
@@ -506,7 +510,7 @@ export default function VideoPage() {
                           <span>{formatTime(duration)}</span>
                         </div>
                       </div>
-                      
+
                       {/* Controls */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
@@ -518,7 +522,7 @@ export default function VideoPage() {
                           >
                             {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                           </Button>
-                          
+
                           <div className="flex items-center space-x-2">
                             <Volume2 className="w-4 h-4 text-white" />
                             <Slider
@@ -530,7 +534,7 @@ export default function VideoPage() {
                             />
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           <span className="text-white text-sm">{playbackSpeed}x</span>
                           <Button
@@ -575,7 +579,7 @@ export default function VideoPage() {
                       <Heart className="w-4 h-4" />
                       <span>{video.likes} Likes</span>
                     </Button>
-                    
+
                     <Button
                       variant="outline"
                       onClick={shareVideo}
@@ -584,7 +588,7 @@ export default function VideoPage() {
                       <Share2 className="w-4 h-4" />
                       <span>Share</span>
                     </Button>
-                    
+
                     <Button
                       variant="outline"
                       onClick={handleSaveVideo}
@@ -600,7 +604,7 @@ export default function VideoPage() {
               {/* Comments Section */}
               <section className="py-8 border-t border-gray-200">
                 <h3 className="text-2xl font-serif font-bold mb-6">Comments ({comments.length})</h3>
-                
+
                 {/* Comment Form */}
                 <Card className="mb-6">
                   <CardContent className="p-6">
@@ -618,8 +622,8 @@ export default function VideoPage() {
                         rows={3}
                         className="border-gray-300"
                       />
-                      <Button 
-                        onClick={handleComment} 
+                      <Button
+                        onClick={handleComment}
                         disabled={!newComment.trim()}
                         className="bg-black text-white hover:bg-gray-800"
                       >
@@ -696,8 +700,8 @@ export default function VideoPage() {
                     <h3 className="font-serif font-bold text-lg mb-4">Related Videos</h3>
                     <div className="space-y-4">
                       {relatedVideos.map(relatedVideo => (
-                        <article 
-                          key={relatedVideo.id} 
+                        <article
+                          key={relatedVideo.id}
                           className="cursor-pointer group"
                           onClick={() => router.push(`/video/${relatedVideo.id}`)}
                         >
@@ -761,7 +765,7 @@ export default function VideoPage() {
                 <Input
                   id="headline"
                   value={editForm.headline}
-                  onChange={(e) => setEditForm({...editForm, headline: e.target.value})}
+                  onChange={(e) => setEditForm({ ...editForm, headline: e.target.value })}
                   className="border-gray-300"
                 />
               </div>
@@ -770,7 +774,7 @@ export default function VideoPage() {
                 <Textarea
                   id="content"
                   value={editForm.content}
-                  onChange={(e) => setEditForm({...editForm, content: e.target.value})}
+                  onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
                   rows={6}
                   className="border-gray-300"
                 />
@@ -780,7 +784,7 @@ export default function VideoPage() {
                 <Input
                   id="thumbnailUrl"
                   value={editForm.thumbnailUrl}
-                  onChange={(e) => setEditForm({...editForm, thumbnailUrl: e.target.value})}
+                  onChange={(e) => setEditForm({ ...editForm, thumbnailUrl: e.target.value })}
                   placeholder="https://example.com/thumbnail.jpg"
                   className="border-gray-300"
                 />
