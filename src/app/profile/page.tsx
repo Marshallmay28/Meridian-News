@@ -10,16 +10,16 @@ import { Shield, Mail } from 'lucide-react'
 import { PageLayout } from '@/components/layout/PageLayout'
 
 export default function ProfilePage() {
-    const { user, loading } = useAuth()
+    const { user, loading, isAdmin } = useAuth()
     const router = useRouter()
 
     useEffect(() => {
-        if (status === 'unauthenticated') {
+        if (!loading && !user) {
             router.push('/auth/login')
         }
-    }, [status, router])
+    }, [loading, user, router])
 
-    if (status === 'loading') {
+    if (loading) {
         return (
             <PageLayout>
                 <div className="min-h-screen flex items-center justify-center">
@@ -29,12 +29,12 @@ export default function ProfilePage() {
         )
     }
 
-    if (!session) {
+    if (!user) {
         return null
     }
 
-    const user = session.user as any
-    const initials = user?.name
+    const userName = user.user_metadata?.name || user.email || 'User'
+    const initials = userName
         ?.split(' ')
         .map((n: string) => n[0])
         .join('')
@@ -53,12 +53,12 @@ export default function ProfilePage() {
                                 </AvatarFallback>
                             </Avatar>
                             <div>
-                                <CardTitle className="text-2xl">{user?.name || 'User'}</CardTitle>
+                                <CardTitle className="text-2xl">{userName}</CardTitle>
                                 <CardDescription className="flex items-center gap-2 mt-1">
                                     <Mail className="w-4 h-4" />
-                                    {user?.email}
+                                    {user.email}
                                 </CardDescription>
-                                {user?.role === 'admin' && (
+                                {isAdmin && (
                                     <div className="flex items-center gap-2 mt-2">
                                         <Shield className="w-4 h-4 text-purple-600" />
                                         <span className="text-sm font-medium text-purple-600">Administrator</span>
@@ -79,20 +79,20 @@ export default function ProfilePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground">Email</label>
-                                <p className="text-sm mt-1">{user?.email}</p>
+                                <p className="text-sm mt-1">{user.email}</p>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground">Name</label>
-                                <p className="text-sm mt-1">{user?.name || 'Not set'}</p>
+                                <p className="text-sm mt-1">{userName}</p>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground">Role</label>
-                                <p className="text-sm mt-1 capitalize">{user?.role || 'user'}</p>
+                                <p className="text-sm mt-1 capitalize">{user.user_metadata?.role || 'user'}</p>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground">Account Type</label>
                                 <p className="text-sm mt-1">
-                                    {user?.role === 'admin' ? 'Administrator' : 'Standard User'}
+                                    {isAdmin ? 'Administrator' : 'Standard User'}
                                 </p>
                             </div>
                         </div>
@@ -107,7 +107,7 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-center py-6">
-                            {user?.role === 'admin' ? (
+                            {isAdmin ? (
                                 <>
                                     <div className="text-4xl font-bold text-purple-600 mb-2">∞</div>
                                     <p className="text-sm text-muted-foreground">Unlimited Publishing (Admin)</p>
@@ -134,7 +134,7 @@ export default function ProfilePage() {
                         >
                             Create New Content
                         </Button>
-                        {user?.role === 'admin' && (
+                        {isAdmin && (
                             <Button
                                 onClick={() => router.push('/admin/dashboard')}
                                 variant="outline"
