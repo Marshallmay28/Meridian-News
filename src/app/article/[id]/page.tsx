@@ -71,7 +71,7 @@ const getDeviceId = () => {
 
 const getArticles = (): Article[] => {
   if (typeof window === 'undefined') return []
-  
+
   const articles = localStorage.getItem('meridianArticles')
   return articles ? JSON.parse(articles) : []
 }
@@ -85,7 +85,7 @@ const getSettings = (): Settings => {
     savedArticles: [],
     readingHistory: []
   }
-  
+
   const settings = localStorage.getItem('meridianSettings')
   return settings ? JSON.parse(settings) : {
     theme: 'light',
@@ -114,15 +114,15 @@ const formatDate = (dateString: string) => {
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const hours = Math.floor(diff / 3600000)
-  
+
   if (hours < 1) {
     const minutes = Math.floor(diff / 60000)
     return `${minutes} minutes ago`
   } else if (hours < 24) {
     return `${hours} hour${hours > 1 ? 's' : ''} ago`
   } else {
-    return date.toLocaleDateString('en-US', { 
-      month: 'long', 
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
       day: 'numeric',
       year: 'numeric'
     })
@@ -131,9 +131,9 @@ const formatDate = (dateString: string) => {
 
 const formatFullDate = (dateString: string) => {
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { 
+  return date.toLocaleDateString('en-US', {
     weekday: 'long',
-    month: 'long', 
+    month: 'long',
     day: 'numeric',
     year: 'numeric'
   })
@@ -144,7 +144,7 @@ const canEditArticle = (article: Article): boolean => {
   const publishedAt = new Date(article.publishedAt)
   const now = new Date()
   const hoursDiff = (now.getTime() - publishedAt.getTime()) / (1000 * 60 * 60)
-  
+
   return article.deviceId === deviceId && hoursDiff <= 24
 }
 
@@ -152,7 +152,7 @@ export default function ArticlePage() {
   const params = useParams()
   const router = useRouter()
   const articleId = params.id as string
-  
+
   const [article, setArticle] = useState<Article | null>(null)
   const [settings, setSettings] = useState<Settings>({
     theme: 'light',
@@ -176,10 +176,10 @@ export default function ArticlePage() {
     // Load settings from localStorage after component mounts
     const loadedSettings = getSettings()
     setSettings(loadedSettings)
-    
+
     const articles = getArticles()
     const foundArticle = articles.find(a => a.id === articleId)
-    
+
     if (foundArticle) {
       setArticle(foundArticle)
       setComments(foundArticle.comments)
@@ -190,7 +190,7 @@ export default function ArticlePage() {
       })
 
       // Update view count
-      const updatedArticles = articles.map(a => 
+      const updatedArticles = articles.map(a =>
         a.id === articleId ? { ...a, views: a.views + 1 } : a
       )
       saveArticles(updatedArticles)
@@ -219,9 +219,9 @@ export default function ArticlePage() {
 
   const handleLike = () => {
     if (!article) return
-    
+
     const articles = getArticles()
-    const updatedArticles = articles.map(a => 
+    const updatedArticles = articles.map(a =>
       a.id === articleId ? { ...a, likes: a.likes + 1 } : a
     )
     saveArticles(updatedArticles)
@@ -230,7 +230,7 @@ export default function ArticlePage() {
 
   const handleSaveArticle = () => {
     if (!article) return
-    
+
     const updatedSettings = {
       ...settings,
       savedArticles: settings.savedArticles.includes(articleId)
@@ -256,7 +256,7 @@ export default function ArticlePage() {
     setComments(updatedComments)
 
     const articles = getArticles()
-    const updatedArticles = articles.map(a => 
+    const updatedArticles = articles.map(a =>
       a.id === articleId ? { ...a, comments: updatedComments } : a
     )
     saveArticles(updatedArticles)
@@ -269,17 +269,17 @@ export default function ArticlePage() {
     if (!article || !canEditArticle(article)) return
 
     const articles = getArticles()
-    const updatedArticles = articles.map(a => 
-      a.id === articleId ? { 
-        ...a, 
+    const updatedArticles = articles.map(a =>
+      a.id === articleId ? {
+        ...a,
         headline: editForm.headline,
         content: editForm.content,
         image: editForm.image || undefined
       } : a
     )
     saveArticles(updatedArticles)
-    setArticle({ 
-      ...article, 
+    setArticle({
+      ...article,
       headline: editForm.headline,
       content: editForm.content,
       image: editForm.image || undefined
@@ -365,17 +365,17 @@ export default function ArticlePage() {
       <div className="bg-white text-black">
         {/* Header */}
         <header className="border-b border-gray-200 bg-white sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center space-x-6">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4">
+            <div className="flex items-center justify-between h-14 sm:h-16">
+              <div className="flex items-center space-x-2 sm:space-x-6">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => router.push('/')}
-                  className="text-black hover:text-blue-600"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Home
+                  className="text-black hover:text-blue-600 text-xs sm:text-sm">
+                  <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Back to Home</span>
+                  <span className="sm:hidden">Back</span>
                 </Button>
                 <nav className="hidden md:flex items-center space-x-6">
                   <button className="text-sm font-medium text-gray-600 hover:text-black">World</button>
@@ -385,21 +385,24 @@ export default function ArticlePage() {
                   <button className="text-sm font-medium text-gray-600 hover:text-black">Opinion</button>
                 </nav>
               </div>
-              
-              <div className="flex items-center space-x-6">
-                <h1 className="text-2xl font-serif font-bold text-black">The Meridian Post</h1>
+
+              <div className="flex items-center space-x-2 sm:space-x-6">
+                <h1 className="text-lg sm:text-2xl font-serif font-bold text-black">
+                  <span className="hidden sm:inline">The Meridian Post</span>
+                  <span className="sm:hidden">Meridian</span>
+                </h1>
               </div>
 
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 sm:space-x-4">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSettings({...settings, theme: settings.theme === 'light' ? 'dark' : 'light'})}
+                  onClick={() => setSettings({ ...settings, theme: settings.theme === 'light' ? 'dark' : 'light' })}
                   className="text-black hover:text-blue-600"
                 >
                   {settings.theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
                 </Button>
-                
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -447,14 +450,14 @@ export default function ArticlePage() {
         <div className="border-b border-gray-100 bg-gray-50">
           <div className="max-w-4xl mx-auto px-4 py-2">
             <nav className="flex items-center space-x-2 text-sm">
-              <button 
+              <button
                 onClick={() => router.push('/')}
                 className="text-gray-600 hover:text-black"
               >
                 Home
               </button>
               <span className="text-gray-400">/</span>
-              <button 
+              <button
                 onClick={() => router.push(`/?category=${article.category}`)}
                 className="text-gray-600 hover:text-black capitalize"
               >
@@ -482,7 +485,7 @@ export default function ArticlePage() {
                       </Badge>
                     </div>
                   )}
-                  
+
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold leading-tight mb-6 text-black">
                     {article.headline}
                   </h1>
@@ -495,10 +498,10 @@ export default function ArticlePage() {
                       <span>•</span>
                       <span>{article.readTime} min read</span>
                     </div>
-                    
+
                     <div className="flex items-center space-x-4">
                       <span>{article.views} views</span>
-                      <button 
+                      <button
                         onClick={handleLike}
                         className="flex items-center space-x-1 hover:text-red-600 transition-colors"
                       >
@@ -521,11 +524,10 @@ export default function ArticlePage() {
                 )}
 
                 {/* Article Body - NYT Style Typography */}
-                <div className={`font-serif text-gray-800 leading-relaxed space-y-6 ${
-                  settings.fontSize === 'small' ? 'text-base' : 
-                  settings.fontSize === 'large' ? 'text-xl' : 
-                  'text-lg'
-                }`}>
+                <div className={`font-serif text-gray-800 leading-relaxed space-y-6 ${settings.fontSize === 'small' ? 'text-base' :
+                    settings.fontSize === 'large' ? 'text-xl' :
+                      'text-lg'
+                  }`}>
                   {article.content.split('\n').map((paragraph, index) => (
                     <p key={index} className={index === 0 ? 'first-letter:text-6xl first-letter:font-bold first-letter:mr-2 first-letter:float-left first-letter:leading-none' : ''}>
                       {paragraph}
@@ -544,7 +546,7 @@ export default function ArticlePage() {
                       <Heart className="w-4 h-4" />
                       <span>{article.likes} Likes</span>
                     </Button>
-                    
+
                     <Button
                       variant="outline"
                       onClick={shareArticle}
@@ -553,7 +555,7 @@ export default function ArticlePage() {
                       <Share2 className="w-4 h-4" />
                       <span>Share</span>
                     </Button>
-                    
+
                     <Button
                       variant="outline"
                       onClick={handleSaveArticle}
@@ -569,7 +571,7 @@ export default function ArticlePage() {
               {/* Comments Section */}
               <section className="py-8 border-t border-gray-200">
                 <h3 className="text-2xl font-serif font-bold mb-6">Comments ({comments.length})</h3>
-                
+
                 {/* Comment Form */}
                 <Card className="mb-6">
                   <CardContent className="p-6">
@@ -587,8 +589,8 @@ export default function ArticlePage() {
                         rows={3}
                         className="border-gray-300"
                       />
-                      <Button 
-                        onClick={handleComment} 
+                      <Button
+                        onClick={handleComment}
                         disabled={!newComment.trim()}
                         className="bg-black text-white hover:bg-gray-800"
                       >
@@ -680,8 +682,8 @@ export default function ArticlePage() {
                     <h3 className="font-serif font-bold text-lg mb-4">Related Articles</h3>
                     <div className="space-y-4">
                       {relatedArticles.map(relatedArticle => (
-                        <article 
-                          key={relatedArticle.id} 
+                        <article
+                          key={relatedArticle.id}
                           className="cursor-pointer group"
                           onClick={() => router.push(`/article/${relatedArticle.id}`)}
                         >
@@ -734,7 +736,7 @@ export default function ArticlePage() {
                 <Input
                   id="headline"
                   value={editForm.headline}
-                  onChange={(e) => setEditForm({...editForm, headline: e.target.value})}
+                  onChange={(e) => setEditForm({ ...editForm, headline: e.target.value })}
                   className="border-gray-300"
                 />
               </div>
@@ -743,7 +745,7 @@ export default function ArticlePage() {
                 <Textarea
                   id="content"
                   value={editForm.content}
-                  onChange={(e) => setEditForm({...editForm, content: e.target.value})}
+                  onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
                   rows={10}
                   className="border-gray-300"
                 />
@@ -753,7 +755,7 @@ export default function ArticlePage() {
                 <Input
                   id="image"
                   value={editForm.image}
-                  onChange={(e) => setEditForm({...editForm, image: e.target.value})}
+                  onChange={(e) => setEditForm({ ...editForm, image: e.target.value })}
                   placeholder="https://example.com/image.jpg"
                   className="border-gray-300"
                 />
