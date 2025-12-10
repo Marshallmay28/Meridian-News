@@ -104,7 +104,9 @@ export default function Home() {
     // Load content from database ONLY
     const loadContent = async () => {
       try {
-        const response = await fetch('/api/content')
+        // Add cache busting to ensure fresh data
+        const timestamp = new Date().getTime()
+        const response = await fetch(`/api/content?_t=${timestamp}`)
         if (response.ok) {
           const data = await response.json()
           setContent(data.content || [])

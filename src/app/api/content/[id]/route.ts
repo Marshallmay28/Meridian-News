@@ -78,8 +78,10 @@ export async function DELETE(
             )
         }
 
+        console.log(`Content deleted successfully: ${id}`)
+
         return NextResponse.json(
-            { message: 'Content deleted successfully' },
+            { message: 'Content deleted successfully', deletedId: id },
             { status: 200 }
         )
     } catch (error) {

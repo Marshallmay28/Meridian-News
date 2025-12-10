@@ -55,11 +55,12 @@ export const bulkDeleteContent = (ids: string[]): void => {
     ids.forEach(id => deleteContentById(id))
 }
 
-export const deleteAllAIContent = (): void => {
+export const deleteAllAIContent = async (): Promise<void> => {
     if (typeof window === 'undefined') return
 
     const keys = ['meridianArticles', 'meridianVideos', 'meridianPodcasts']
 
+    // Clean up localStorage
     keys.forEach(key => {
         const content = JSON.parse(localStorage.getItem(key) || '[]')
         const filtered = content.filter((item: Content) => !item.isAI)
@@ -67,11 +68,12 @@ export const deleteAllAIContent = (): void => {
     })
 }
 
-export const deleteAllUserContent = (): void => {
+export const deleteAllUserContent = async (): Promise<void> => {
     if (typeof window === 'undefined') return
 
     const keys = ['meridianArticles', 'meridianVideos', 'meridianPodcasts']
 
+    // Clean up localStorage
     keys.forEach(key => {
         const content = JSON.parse(localStorage.getItem(key) || '[]')
         const filtered = content.filter((item: Content) => item.isAI)

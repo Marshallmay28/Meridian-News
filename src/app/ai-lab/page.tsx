@@ -49,24 +49,20 @@ export default function AILabPage() {
 
   const loadContent = async () => {
     try {
-      // Fetch from database
-      const response = await fetch('/api/content')
+      // Add cache busting to ensure fresh data
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/content?_t=${timestamp}`)
       if (response.ok) {
         const data = await response.json()
-        // Filter only AI-generated content
-        const aiContent = data.content?.filter((item: Content) => item.isAI) || []
+        const aiContent = (data.content || []).filter((item: Content) => item.isAI)
         setContent(aiContent)
       } else {
-        // Fallback to localStorage
-        const allContent = getAllContent()
-        const aiContent = allContent.filter(item => item.isAI)
-        setContent(aiContent)
+        console.error('Failed to load AI content from database')
+        setContent([])
       }
     } catch (error) {
-      console.error('Failed to load content:', error)
-      const allContent = getAllContent()
-      const aiContent = allContent.filter(item => item.isAI)
-      setContent(aiContent)
+      console.error('Error loading AI content:', error)
+      setContent([])
     }
   }
 

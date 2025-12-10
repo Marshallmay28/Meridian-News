@@ -92,6 +92,9 @@ export default function AdminDashboard() {
             })
 
             if (response.ok) {
+                // Clean up localStorage to prevent deleted content from persisting
+                deleteContentById(contentToDelete.id)
+
                 toast.success('Content deleted successfully')
                 setDeleteDialogOpen(false)
                 setContentToDelete(null)
@@ -106,12 +109,12 @@ export default function AdminDashboard() {
         }
     }
 
-    const handleBulkDelete = () => {
+    const handleBulkDelete = async () => {
         if (bulkDeleteType === 'ai') {
-            deleteAllAIContent()
+            await deleteAllAIContent()
             toast.success('All AI content deleted')
         } else if (bulkDeleteType === 'user') {
-            deleteAllUserContent()
+            await deleteAllUserContent()
             toast.success('All user content deleted')
         }
         setBulkDeleteDialogOpen(false)
