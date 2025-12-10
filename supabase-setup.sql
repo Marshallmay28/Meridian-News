@@ -40,7 +40,7 @@ TO authenticated
 WITH CHECK (true);
 
 -- Policy 3: Allow users to update their own content
--- NOW WORKS: Uses auth.uid() from Supabase Auth
+-- FIXED: Convert auth.uid() to TEXT to match user_id column
 CREATE POLICY "Allow users to update own content"
 ON content
 FOR UPDATE
@@ -48,7 +48,7 @@ TO authenticated
 USING (auth.uid()::text = user_id);
 
 -- Policy 4: Allow admins to delete any content
--- NOW WORKS: Checks user_metadata for admin role
+-- FIXED: Check user_metadata for admin role
 CREATE POLICY "Allow admin delete"
 ON content
 FOR DELETE
@@ -60,6 +60,7 @@ USING (
 );
 
 -- Policy 5: Allow users to delete their own content
+-- FIXED: Convert auth.uid() to TEXT to match user_id column
 CREATE POLICY "Allow users to delete own content"
 ON content
 FOR DELETE
