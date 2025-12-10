@@ -146,8 +146,8 @@ export function AIContentGenerator({ onGenerated }: AIGeneratorProps) {
                         </SelectTrigger>
                         <SelectContent>
                             {CATEGORIES.map((cat) => {
-                                const catValue = typeof cat === 'string' ? cat : cat.value || cat.name || String(cat)
-                                const catLabel = typeof cat === 'string' ? cat : cat.label || cat.name || String(cat)
+                                const catValue = typeof cat === 'string' ? cat : (cat as any).value || (cat as any).name || String(cat)
+                                const catLabel = typeof cat === 'string' ? cat : (cat as any).label || (cat as any).name || String(cat)
                                 return (
                                     <SelectItem key={catValue} value={catValue}>
                                         {catLabel.charAt(0).toUpperCase() + catLabel.slice(1)}
