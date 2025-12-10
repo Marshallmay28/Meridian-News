@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/contexts/auth-context'
 import { Search, Moon, Sun, TrendingUp, Filter, Grid, List, ChevronRight, Brain, Video, Mic, FileText, Download, Upload, Plus, Heart, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -80,7 +80,7 @@ const getPublishingCount = (settings: Settings): { count: number; remaining: num
 
 export default function Home() {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { user, isAdmin } = useAuth()
   const [content, setContent] = useState<Content[]>([])
   const [settings, setSettings] = useState<Settings>({
     theme: 'light',

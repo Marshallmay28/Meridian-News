@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/contexts/auth-context'
 import { ArrowLeft, Plus, Sun, Moon, Eye, X, Film, Brain, Video, Mic, FileText, Image, Type, Calendar, User, Globe, Zap, BookOpen, Clock, FileAudio } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -94,7 +94,7 @@ const formatFileSize = (bytes: number): string => {
 
 export default function PublishPage() {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const audioInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)

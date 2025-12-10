@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +10,7 @@ import { Shield, Mail } from 'lucide-react'
 import { PageLayout } from '@/components/layout/PageLayout'
 
 export default function ProfilePage() {
-    const { data: session, status } = useSession()
+    const { user, loading } = useAuth()
     const router = useRouter()
 
     useEffect(() => {
