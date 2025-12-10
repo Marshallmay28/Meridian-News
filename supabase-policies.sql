@@ -24,7 +24,7 @@ CREATE POLICY "Allow users to update own content"
 ON content
 FOR UPDATE
 TO authenticated
-USING (auth.uid()::text = user_id);
+USING (auth.uid() = user_id::uuid);
 
 -- Policy: Allow admin to delete any content
 CREATE POLICY "Allow admin delete"
@@ -34,7 +34,7 @@ TO authenticated
 USING (
   EXISTS (
     SELECT 1 FROM users
-    WHERE users.id = auth.uid()::text
+    WHERE users.id::uuid = auth.uid()
     AND users.role = 'admin'
   )
 );
@@ -44,7 +44,7 @@ CREATE POLICY "Allow users to delete own content"
 ON content
 FOR DELETE
 TO authenticated
-USING (auth.uid()::text = user_id);
+USING (auth.uid() = user_id::uuid);
 
 -- ============================================
 -- PART 2: PERFORMANCE OPTIMIZATIONS
