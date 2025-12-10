@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MediaType, CATEGORIES } from '@/lib/content-models'
+import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 
 interface AIGeneratorProps {
@@ -16,6 +17,7 @@ interface AIGeneratorProps {
 }
 
 export function AIContentGenerator({ onGenerated }: AIGeneratorProps) {
+    const { session } = useAuth()
     const [contentType, setContentType] = useState<MediaType>('article')
     const [topic, setTopic] = useState('')
     const [category, setCategory] = useState('technology')
@@ -27,6 +29,11 @@ export function AIContentGenerator({ onGenerated }: AIGeneratorProps) {
     const generateContent = async () => {
         if (!topic.trim()) {
             toast.error('Please enter a topic')
+            return
+        }
+
+        if (!session) {
+            toast.error('Please log in to generate content')
             return
         }
 
@@ -56,15 +63,19 @@ export function AIContentGenerator({ onGenerated }: AIGeneratorProps) {
                 description: `AI-generated ${contentType} about ${topic}`,
             }
 
-            // Save to database via API
+            // Save to database via API with authentication
             const response = await fetch('/api/content', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`
+                },
                 body: JSON.stringify(contentData)
             })
 
             if (!response.ok) {
-                throw new Error('Failed to save content')
+                const errorData = await response.json()
+                throw new Error(errorData.error || 'Failed to save content')
             }
 
             toast.success(`${contentType === 'article' ? 'Article' : contentType === 'video' ? 'Video' : 'Podcast'} generated and published successfully!`)
@@ -80,7 +91,7 @@ export function AIContentGenerator({ onGenerated }: AIGeneratorProps) {
             }
         } catch (error) {
             console.error('Generation error:', error)
-            toast.error('Failed to generate content')
+            toast.error(error instanceof Error ? error.message : 'Failed to generate content')
         } finally {
             setIsGenerating(false)
         }
