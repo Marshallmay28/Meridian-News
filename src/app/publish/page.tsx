@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { ArrowLeft, Plus, Sun, Moon, Eye, X, Film, Brain, Video, Mic, FileText, Image, Type, Calendar, User, Globe, Zap, BookOpen, Clock, FileAudio } from 'lucide-react'
@@ -221,8 +221,8 @@ export default function PublishPage() {
       const contentData: any = {
         headline: publishForm.headline,
         content: publishForm.content,
-        category: publishForm.category,
         author: user?.user_metadata?.name || publishForm.author || 'Anonymous',
+        category: publishForm.category,
         media_type: mediaType,
         thumbnail_url: thumbnailUrl,
         video_url: videoUrl,
@@ -235,6 +235,7 @@ export default function PublishPage() {
       if (mediaType === 'article') {
         contentData.image = publishForm.description || `https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800`
       } else if (mediaType === 'video' && uploadedFile) {
+        contentData.image = publishForm.description || `https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800`
         contentData.videoUrl = URL.createObjectURL(uploadedFile)
         contentData.thumbnailUrl = publishForm.description || `https://images.unsplash.com/photo-1492619375914-88005aa9e8fb?w=800`
         contentData.duration = publishForm.duration || 300
