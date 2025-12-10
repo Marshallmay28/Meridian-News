@@ -132,7 +132,36 @@ export async function GET(request: NextRequest) {
             )
         }
 
-        return NextResponse.json({ content: data }, { status: 200 })
+        // Transform snake_case to camelCase for frontend
+        const transformedData = data?.map((item: any) => ({
+            id: item.id,
+            userId: item.user_id,
+            headline: item.headline,
+            content: item.content,
+            author: item.author,
+            category: item.category,
+            mediaType: item.media_type,
+            publishedAt: item.published_at,
+            views: item.views || 0,
+            likes: item.likes || 0,
+            readTime: item.read_time,
+            isAI: item.is_ai || false,
+            tags: item.tags || [],
+            image: item.image,
+            videoUrl: item.video_url,
+            thumbnailUrl: item.thumbnail_url,
+            duration: item.duration,
+            resolution: item.resolution,
+            fileSize: item.file_size,
+            audioUrl: item.audio_url,
+            coverImageUrl: item.cover_image_url,
+            episodeNumber: item.episode_number,
+            seasonNumber: item.season_number,
+            transcript: item.transcript,
+            description: item.description
+        })) || []
+
+        return NextResponse.json({ content: transformedData }, { status: 200 })
     } catch (error) {
         console.error('Server error:', error)
         return NextResponse.json(
@@ -141,3 +170,4 @@ export async function GET(request: NextRequest) {
         )
     }
 }
+
